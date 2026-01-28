@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Home - AI Quiz Generator{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-primary">🧠 AI Quiz Generator</h1>
+                <p class="text-muted fs-5">Generate a custom quiz from a topic or your own study notes.</p>
+            </div>
+
+            <div class="card shadow-lg border-0 mb-5">
+                <div class="card-header bg-white border-bottom-0 pt-4">
+                    <ul class="nav nav-tabs card-header-tabs justify-content-center" id="quizTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-bold" id="topic-tab" data-bs-toggle="tab" data-bs-target="#topic-mode" type="button">
+                                🖊️ By Topic
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-mode" type="button">
+                                📄 By PDF Upload
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" action="{{ url_for('generate_quiz') }}" enctype="multipart/form-data">
+                        
+                        <div class="tab-content mb-4" id="quizTabContent">
+                            
+                            <div class="tab-pane fade show active" id="topic-mode" role="tabpanel">
+                                <label for="topic" class="form-label fw-bold">Enter Quiz Topic</label>
+                                <input type="text" id="topic" name="topic" class="form-control form-control-lg" placeholder="e.g. Python Programming, Ancient History...">
+                                <div class="form-text">The AI will generate questions based on general knowledge of this topic.</div>
+                            </div>
+
+                            <div class="tab-pane fade" id="pdf-mode" role="tabpanel">
+                                <label for="pdf_file" class="form-label fw-bold">Upload Study Material (PDF)</label>
+                                <input type="file" id="pdf_file" name="pdf_file" class="form-control form-control-lg" accept="application/pdf">
+                                <div class="form-text">Upload a resume, chapter, or notes (Max 20 pages). The AI will test you on this content.</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4 text-muted">
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="question_limit" class="form-label">Questions</label>
+                                <select name="question_limit" id="question_limit" class="form-select">
+                                    <option value="5" selected>5</option>
+                                    <option value="10">10</option>
+                                    <option value="15">15</option>
+                                    <option value="20">20</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label">Difficulty</label>
+                                <select name="difficulty" class="form-select">
+                                    <option value="Easy">Easy</option>
+                                    <option value="Medium" selected>Medium</option>
+                                    <option value="Hard">Hard</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="duration" class="form-label">Duration</label>
+                                <select name="duration" id="duration" class="form-select">
+                                    <option value="300" selected>5 Min</option>
+                                    <option value="600">10 Min</option>
+                                    <option value="1800">30 Min</option>
+                                    <option value="3600">60 Min</option>
+                                    <option value="5400">90 Min</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg py-3 fw-bold shadow-sm">
+                                🚀 Generate Quiz
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-5">
+                <h3 class="mb-4 fw-bold text-secondary">📜 Your Quiz History</h3>
+                
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4 py-3">Topic</th>
+                                        <th>Score</th>
+                                        <th>Date</th>
+                                        <th class="text-end pe-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in history %}
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-dark">{{ item.topic }}</td>
+                                        <td>
+                                            <span class="fw-bold">{{ item.score }}</span> 
+                                            <span class="text-muted small">/ {{ item.total_questions }}</span>
+                                        </td>
+                                        <td class="text-muted small">{{ item.date_taken.strftime('%b %d, %Y') }}</td>
+                                        <td class="text-end pe-4">
+                                            {% set percent = (item.score / item.total_questions) * 100 %}
+                                            {% if percent >= 70 %}
+                                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">Pass</span>
+                                            {% else %}
+                                                <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill">Review</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5 text-muted">
+                                            <div class="fs-1 mb-2">📂</div>
+                                            <p class="mb-1">No quizzes taken yet.</p>
+                                            <small>Generate your first quiz above to start tracking progress!</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="loadingOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75" style="z-index: 9999;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h4 class="mt-3 text-primary fw-bold">🤖 AI is generating your quiz...</h4>
+        <p class="text-muted">This may take a few seconds.</p>
+    </div>
+</div>
+
+<script>
+    // JavaScript to show the loading overlay when the form is submitted
+    document.querySelector('form').addEventListener('submit', function() {
+        // Remove the 'd-none' class to make the overlay visible
+        document.getElementById('loadingOverlay').classList.remove('d-none');
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Results{% endblock %}
+
+{% block content %}
+
+<style>
+    /* Code block styling */
+    pre {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        overflow-x: auto;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    /* Inline code styling */
+    code {
+        font-family: Consolas, "Courier New", monospace;
+        color: #d63384;
+        background-color: rgba(214, 51, 132, 0.1);
+        padding: 2px 4px;
+        border-radius: 4px;
+    }
+
+    .answer-text p { display: inline; margin: 0; }
+    .question-text p { margin-bottom: 0.5rem; }
+</style>
+
+<div class="container py-5">
+    <div class="result-box bg-white p-4 rounded shadow-sm">
+
+        <h2 class="mb-4 text-center">🎉 Your Score: {{ score }} / {{ total }}</h2>
+        <hr>
+
+        {% for r in results %}
+            <div class="mb-4">
+
+                <div class="mb-2 fw-bold question-text d-flex">
+                    <span class="me-2">Q{{ loop.index }}.</span>
+                    <div class="w-100">{{ r.question | markdown | safe }}</div>
+                </div>
+
+                <ul class="mt-2">
+                    {% for opt in r.options %}
+                        <li>
+                            <span class="answer-text">{{ opt | markdown | safe }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="{{ 'text-success' if r.is_correct else 'text-danger' }} mb-2">
+                    <div>
+                        Your Answer: 
+                        <strong class="answer-text">{{ r.selected | markdown | safe }}</strong>
+                    </div>
+                    <div class="mt-1">
+                        Correct Answer: 
+                        <strong class="answer-text">{{ r.correct | markdown | safe }}</strong>
+                    </div>
+                </div>
+
+                <div class="text-muted bg-light p-3 rounded border">
+                    <em>Explanation:</em><br>
+                    {{ r.explanation | markdown | safe }}
+                </div>
+
+                <hr>
+            </div>
+        {% endfor %}
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                Try Another Quiz
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

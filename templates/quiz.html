@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Quiz - AI Quiz Generator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">🧠 Quiz in Progress</h2>
+        <div class="badge bg-danger fs-5 shadow-sm p-2" id="timer-badge">
+            ⏳ <span id="timer">Loading...</span>
+        </div>
+    </div>
+
+    <form method="post" action="{{ url_for('submit') }}" id="quizForm">
+        {% for q in questions %}
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-header bg-white border-bottom-0 pt-4">
+                    <div class="d-flex">
+                        <span class="fw-bold me-2 fs-5">Q{{ loop.index }}.</span>
+                        <div class="flex-grow-1">
+                            {{ q.text | markdown | safe }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body ps-5">
+                    {% set opts = q.options.split('||') %}
+                    {% for opt in opts %}
+                        <div class="form-check mb-3 p-3 border rounded hover-option">
+                            <input class="form-check-input mt-1" type="radio" 
+                                   name="{{ q.id }}" 
+                                   id="{{ q.id }}_{{ loop.index }}" 
+                                   value="{{ opt }}" required>
+                            
+                            <label class="form-check-label w-100" for="{{ q.id }}_{{ loop.index }}">
+                                {{ opt | markdown | safe }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-5 mb-5">
+            <button type="submit" class="btn btn-success btn-lg px-5 shadow-sm">
+                ✅ Submit Answers
+            </button>
+            <a href="{{ url_for('quit_quiz') }}" class="btn btn-outline-danger btn-lg px-5 ms-md-2">
+                ❌ Quit Quiz
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .hover-option:hover {
+        background-color: #f8f9fa; /* Light grey on hover */
+        border-color: #0d6efd !important; /* Blue border on hover */
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+    .form-check-input:checked + label {
+        color: #0d6efd;
+        font-weight: bold;
+    }
+</style>
+
+<script>
+    // Get duration from server-side session, default to 60s if missing
+    let timeLeft = {{ session.get('duration', 60) }}; 
+    
+    const timerDisplay = document.getElementById("timer");
+    const timerBadge = document.getElementById("timer-badge");
+    const form = document.getElementById("quizForm");
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        // Add leading zero if seconds < 10
+        return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+    }
+
+    // Initial display
+    timerDisplay.textContent = formatTime(timeLeft);
+
+    const interval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = formatTime(timeLeft);
+
+        // Turn red and pulse when time is low (less than 15 seconds)
+        if (timeLeft < 15) {
+            timerBadge.classList.remove("bg-primary");
+            timerBadge.classList.add("bg-danger");
+            timerBadge.style.animation = "pulse 1s infinite";
+        }
+
+        if (timeLeft <= 0) {
+            clearInterval(interval);
+            alert("⏰ Time is up! Submitting your answers.");
+            form.submit();
+        }
+    }, 1000);
+</script>
+
+<style>
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
