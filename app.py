@@ -285,7 +285,8 @@ def markdown_filter(text):
     if text is None: return ""
     return markdown.markdown(text, extensions=['fenced_code', 'codehilite'])
 
-if __name__ == '__main__':
-    with app.app_context():
+with app.app_context():
         db.create_all()
+
+if __name__ == '__main__':
     app.run(debug=True)
