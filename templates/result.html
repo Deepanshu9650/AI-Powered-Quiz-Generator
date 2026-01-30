@@ -32,48 +32,103 @@
 <div class="container py-5">
     <div class="result-box bg-white p-4 rounded shadow-sm">
 
-        <h2 class="mb-4 text-center">🎉 Your Score: {{ score }} / {{ total }}</h2>
+        <div class="text-center mb-5">
+            <h2 class="mb-2">🎉 Your Score: <span class="text-primary">{{ score }}</span> / {{ total }}</h2>
+            
+            {% set percentage = (score / total) * 100 %}
+            {% if percentage >= 80 %}
+                <span class="badge bg-success">Excellent!</span>
+            {% elif percentage >= 50 %}
+                <span class="badge bg-warning text-dark">Good Job</span>
+            {% else %}
+                <span class="badge bg-danger">Keep Practicing</span>
+            {% endif %}
+        </div>
         <hr>
 
         {% for r in results %}
-            <div class="mb-4">
+            <div class="mb-5">
 
-                <div class="mb-2 fw-bold question-text d-flex">
-                    <span class="me-2">Q{{ loop.index }}.</span>
+                <div class="mb-3 fw-bold question-text d-flex align-items-start">
+                    <span class="me-2 badge bg-light text-dark border">Q{{ loop.index }}</span>
                     <div class="w-100">{{ r.question | markdown | safe }}</div>
                 </div>
 
-                <ul class="mt-2">
-                    {% for opt in r.options %}
-                        <li>
-                            <span class="answer-text">{{ opt | markdown | safe }}</span>
-                        </li>
-                    {% endfor %}
-                </ul>
+                {% if q_type == 'MCQ' %}
+                    
+                    <ul class="list-group mb-3">
+                        {% for opt in r.options %}
+                            <li class="list-group-item border-0 px-0 py-1">
+                                <i class="far fa-circle text-muted me-2 small"></i>
+                                <span class="answer-text text-muted">{{ opt | markdown | safe }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
 
-                <div class="{{ 'text-success' if r.is_correct else 'text-danger' }} mb-2">
-                    <div>
-                        Your Answer: 
-                        <strong class="answer-text">{{ r.selected | markdown | safe }}</strong>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded border {{ 'bg-success bg-opacity-10 border-success' if r.is_correct else 'bg-danger bg-opacity-10 border-danger' }}">
+                                <small class="text-uppercase fw-bold {{ 'text-success' if r.is_correct else 'text-danger' }}">Your Answer</small>
+                                <div class="mt-1 fw-bold">
+                                    {{ r.selected | markdown | safe }}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if not r.is_correct %}
+                        <div class="col-md-6">
+                            <div class="p-3 rounded border bg-light">
+                                <small class="text-uppercase fw-bold text-success">Correct Answer</small>
+                                <div class="mt-1 fw-bold text-success">
+                                    {{ r.correct | markdown | safe }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
-                    <div class="mt-1">
-                        Correct Answer: 
-                        <strong class="answer-text">{{ r.correct | markdown | safe }}</strong>
+
+                {% else %}
+                    
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold text-uppercase">Your Submission:</label>
+                        {% if q_type == 'Code' %}
+                            <pre><code class="language-python">{{ r.selected }}</code></pre>
+                        {% else %}
+                            <div class="p-3 bg-light rounded border mt-1">
+                                {{ r.selected }}
+                            </div>
+                        {% endif %}
                     </div>
-                </div>
 
-                <div class="text-muted bg-light p-3 rounded border">
-                    <em>Explanation:</em><br>
-                    {{ r.explanation | markdown | safe }}
-                </div>
+                    <div class="alert {{ 'alert-success' if r.is_correct else 'alert-warning' }} border-0 shadow-sm">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-robot me-2"></i>
+                            <h6 class="mb-0 fw-bold">AI Feedback</h6>
+                        </div>
+                        <div class="small">
+                            {{ r.explanation | markdown | safe }}
+                        </div>
+                    </div>
 
-                <hr>
+                {% endif %}
+
+                {% if q_type == 'MCQ' and r.explanation %}
+                    <div class="mt-3 text-muted bg-light p-3 rounded border small">
+                        <strong><i class="fas fa-info-circle"></i> Explanation:</strong><br>
+                        {{ r.explanation | markdown | safe }}
+                    </div>
+                {% endif %}
+
+                <hr class="mt-4">
             </div>
         {% endfor %}
 
         <div class="text-center mt-4">
-            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
-                Try Another Quiz
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg shadow-sm">
+                🔄 Take Another Quiz
+            </a>
+            <a href="{{ url_for('profile') }}" class="btn btn-outline-dark btn-lg ms-2">
+                👤 View Profile
             </a>
         </div>
 

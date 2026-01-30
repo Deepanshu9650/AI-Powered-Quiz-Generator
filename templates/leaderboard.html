@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard - AI Quiz Generator{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    
+    <div class="text-center mb-5">
+        <h1 class="fw-bold display-5 text-primary">🏆 Global Leaderboard</h1>
+        <p class="text-muted fs-5">Top active learners ranked by streak.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="mb-0 fw-bold text-secondary"><i class="fas fa-medal me-2"></i>Current Standings</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="bg-light text-uppercase small fw-bold text-muted">
+                                <tr>
+                                    <th class="ps-4 py-3" style="width: 80px;">Rank</th>
+                                    <th>User</th>
+                                    <th class="text-end pe-4">Current Streak</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leader in leaders %}
+                                <tr class="{% if loop.index == 1 %}bg-warning bg-opacity-10{% elif loop.index == 2 %}bg-secondary bg-opacity-10{% elif loop.index == 3 %}bg-danger bg-opacity-10{% endif %}">
+                                    
+                                    <td class="ps-4 fw-bold">
+                                        {% if loop.index == 1 %}
+                                            <span class="fs-4">🥇</span>
+                                        {% elif loop.index == 2 %}
+                                            <span class="fs-4">🥈</span>
+                                        {% elif loop.index == 3 %}
+                                            <span class="fs-4">🥉</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark border rounded-pill px-3">#{{ loop.index }}</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://ui-avatars.com/api/?name={{ leader.username }}&background=random&size=40&bold=true" 
+                                                 class="rounded-circle me-3 shadow-sm" width="40" height="40">
+                                            
+                                            <div>
+                                                <h6 class="mb-0 fw-bold 
+                                                    {% if loop.index == 1 %}text-warning{% elif loop.index == 2 %}text-secondary{% elif loop.index == 3 %}text-danger{% else %}text-dark{% endif %}">
+                                                    {{ leader.username }}
+                                                    {% if current_user.is_authenticated and leader.id == current_user.id %}
+                                                    <span class="badge bg-primary ms-2" style="font-size: 0.6em;">YOU</span>
+                                                    {% endif %}
+                                                </h6>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td class="text-end pe-4">
+                                        <h5 class="mb-0 fw-bold text-primary">
+                                            {{ leader.current_streak }} <span class="fs-6 text-muted">🔥</span>
+                                        </h5>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">
+                                        No active players yet. Be the first!
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-5">
+                <p class="text-muted small">Keep taking quizzes daily to climb the ranks!</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary shadow-sm fw-bold px-4 py-2 rounded-pill">
+                    🚀 Start a Quiz Now
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

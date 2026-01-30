@@ -48,18 +48,28 @@
                         <hr class="my-4 text-muted">
 
                         <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="question_limit" class="form-label">Questions</label>
+                            <div class="col-md-6">
+                                <label for="question_limit" class="form-label fw-bold">Questions</label>
                                 <select name="question_limit" id="question_limit" class="form-select">
-                                    <option value="5" selected>5</option>
-                                    <option value="10">10</option>
-                                    <option value="15">15</option>
-                                    <option value="20">20</option>
+                                    <option value="5" selected>5 Questions</option>
+                                    <option value="10">10 Questions</option>
+                                    <option value="15">15 Questions</option>
+                                    <option value="20">20 Questions</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Quiz Type</label>
+                                <select name="q_type" class="form-select">
+                                    <option value="MCQ" selected>Multiple Choice</option>
+                                    <option value="Theory">Theory (Short Answer)</option>
+                                    <option value="Code">Coding Challenge</option>
+                                    <option value="Flashcard">📚 Flashcard Study</option>
                                 </select>
                             </div>
                             
-                            <div class="col-md-4">
-                                <label class="form-label">Difficulty</label>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Difficulty</label>
                                 <select name="difficulty" class="form-select">
                                     <option value="Easy">Easy</option>
                                     <option value="Medium" selected>Medium</option>
@@ -67,8 +77,8 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-4">
-                                <label for="duration" class="form-label">Duration</label>
+                            <div class="col-md-6">
+                                <label for="duration" class="form-label fw-bold">Duration</label>
                                 <select name="duration" id="duration" class="form-select">
                                     <option value="300" selected>5 Min</option>
                                     <option value="600">10 Min</option>
@@ -81,7 +91,7 @@
 
                         <div class="d-grid mt-5">
                             <button type="submit" class="btn btn-primary btn-lg py-3 fw-bold shadow-sm">
-                                🚀 Generate Quiz
+                                🚀 Generate
                             </button>
                         </div>
 
@@ -147,7 +157,7 @@
         <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
-        <h4 class="mt-3 text-primary fw-bold">🤖 AI is generating your quiz...</h4>
+        <h4 class="mt-3 text-primary fw-bold">🤖 AI is generating...</h4>
         <p class="text-muted">This may take a few seconds.</p>
     </div>
 </div>

@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - AI Quiz Generator{% endblock %}
+
+{% block content %}
+<style>
+    /* --- SCROLLBAR STYLING --- */
+    .heatmap-wrapper::-webkit-scrollbar {
+        height: 8px;
+    }
+    .heatmap-wrapper::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    .heatmap-wrapper::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    .heatmap-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    /* --- HEATMAP LAYOUT --- */
+    .heatmap-wrapper {
+        overflow-x: auto;       /* Force horizontal scroll */
+        overflow-y: hidden;
+        padding-bottom: 10px;
+        width: 100%;
+        background: #fff;       
+    }
+
+    /* Container that holds labels + grid */
+    .graph-stack {
+        display: flex;
+        flex-direction: column;
+        /* CRITICAL: Forces the div to be as wide as the grid, preventing text collapse */
+        min-width: max-content; 
+        padding-right: 30px;    /* Extra padding at end */
+    }
+
+    /* Month Labels Row */
+    .heatmap-months {
+        position: relative;
+        height: 20px;
+        margin-bottom: 5px;
+        width: 100%;
+    }
+
+    .month-label {
+        position: absolute;
+        font-size: 11px;
+        color: #6c757d;
+        font-weight: 500;
+        top: 0;
+    }
+
+    /* The Grid itself */
+    .heatmap-container {
+        display: grid;
+        grid-template-rows: repeat(7, 13px); /* 7 rows for days */
+        grid-auto-flow: column;              /* Fill columns first */
+        grid-gap: 4px;                       /* Proper gap between boxes */
+    }
+
+    .day-box {
+        width: 13px;
+        height: 13px;
+        border-radius: 3px;
+        background-color: #ebedf0;
+    }
+
+    .day-box:hover {
+        border: 1px solid rgba(0,0,0,0.6);
+        transform: scale(1.3);
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+
+    /* --- COLORS --- */
+    .level-0 { background-color: #ebedf0; }
+    .level-1 { background-color: #9be9a8; }
+    .level-2 { background-color: #40c463; }
+    .level-3 { background-color: #30a14e; }
+    .level-4 { background-color: #216e39; }
+
+    .heatmap-legend {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        font-size: 12px;
+        color: #666;
+        margin-top: 15px;
+    }
+    .legend-box { width: 13px; height: 13px; border-radius: 3px; }
+</style>
+
+<div class="container py-5">
+    
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-lg border-0 h-100 text-center py-5">
+                <div class="card-body">
+                    <div class="mb-4">
+                        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=0d6efd&color=fff&size=128&bold=true" 
+                             class="rounded-circle shadow" alt="User Avatar">
+                    </div>
+                    <h2 class="fw-bold text-dark">{{ user.username }}</h2>
+                    <p class="text-primary fw-bold text-uppercase letter-spacing mb-0">Quiz Master</p>
+                    
+                    {% if user.id == current_user.id %}
+                    <div class="mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-primary rounded-pill px-4 fw-bold">
+                            <i class="fas fa-plus me-1"></i> New Quiz
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-lg border-0 h-100">
+                <div class="card-body d-flex flex-column justify-content-center p-4">
+                    
+                    <div class="row text-center mb-4">
+                        <div class="col-6 border-end">
+                            <h6 class="text-uppercase text-muted fw-bold small">Current Streak</h6>
+                            <div class="display-4 fw-bold text-warning">
+                                {% if user.current_streak > 0 %}🔥{% endif %} {{ user.current_streak }}
+                            </div>
+                            <small class="text-muted">Days</small>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-uppercase text-muted fw-bold small">Longest Streak</h6>
+                            <div class="display-4 fw-bold text-success">
+                                {{ user.longest_streak }}
+                            </div>
+                            <small class="text-muted">Days</small>
+                        </div>
+                    </div>
+
+                    <hr class="text-muted opacity-25">
+
+                    <div class="mt-2">
+                        <h6 class="fw-bold text-secondary mb-3">
+                            <i class="fas fa-calendar-alt me-2"></i> Activity Graph (Last Year)
+                        </h6>
+                        
+                        <div class="heatmap-wrapper">
+                            <div class="graph-stack">
+                                <div id="months-row" class="heatmap-months"></div>
+                                <div id="contribution-graph" class="heatmap-container"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="heatmap-legend">
+                            <span>Less</span>
+                            <div class="legend-box level-0"></div>
+                            <div class="legend-box level-1"></div>
+                            <div class="legend-box level-2"></div>
+                            <div class="legend-box level-3"></div>
+                            <div class="legend-box level-4"></div>
+                            <span>More</span>
+                        </div>
+                    </div>
+
+                    <hr class="text-muted opacity-25 my-4">
+
+                    <div>
+                        <h6 class="fw-bold text-secondary mb-3">
+                            <i class="fas fa-medal me-2"></i> Achievements
+                        </h6>
+                        
+                        {% if user.achievements %}
+                            <div class="d-flex flex-wrap gap-3">
+                                {% for badge in user.achievements %}
+                                <div class="text-center p-3 border rounded bg-light" style="min-width: 100px;" title="{{ badge.description }}">
+                                    <div class="fs-1 text-warning mb-2">
+                                        <i class="fas {{ badge.icon }}"></i>
+                                    </div>
+                                    <div class="small fw-bold text-dark">{{ badge.name }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light border text-center text-muted small">
+                                No badges yet. Complete quizzes to unlock!
+                            </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-white pt-4 pb-2 border-bottom-0">
+            <h5 class="fw-bold text-primary">
+                <i class="fas fa-history me-2"></i> Recent Submission History
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if history %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="bg-light text-uppercase small fw-bold text-muted">
+                        <tr>
+                            <th class="ps-4 py-3">Date</th>
+                            <th>Topic</th>
+                            <th>Difficulty</th>
+                            <th>Score</th>
+                            <th class="text-end pe-4">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in history %}
+                        <tr>
+                            <td class="ps-4 text-muted font-monospace">
+                                {{ result.date_taken.strftime('%Y-%m-%d') }}
+                            </td>
+                            <td class="fw-bold text-dark">{{ result.topic }}</td>
+                            <td>
+                                {% if result.difficulty == 'Easy' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success">Easy</span>
+                                {% elif result.difficulty == 'Medium' %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning">Medium</span>
+                                {% else %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger">Hard</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ result.score }}</strong> <span class="text-muted small">/ {{ result.total_questions }}</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                {% set percent = (result.score / result.total_questions) * 100 %}
+                                {% if percent >= 60 %}
+                                    <span class="text-success fw-bold me-3"><i class="fas fa-check"></i></span>
+                                {% else %}
+                                    <span class="text-danger fw-bold me-3"><i class="fas fa-times"></i></span>
+                                {% endif %}
+
+                                {% if user.id == current_user.id %}
+                                    <a href="{{ url_for('download_result', result_id=result.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary rounded-circle" 
+                                       title="Download Report">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3 text-muted display-4 opacity-25">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h5 class="text-muted fw-bold">No quizzes taken yet.</h5>
+                
+                {% if user.id == current_user.id %}
+                    <p class="text-muted mb-4">Complete your first quiz to light up the graph!</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm">
+                        Start New Quiz
+                    </a>
+                {% else %}
+                    <p class="text-muted">This user hasn't taken any quizzes yet.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Data
+    const activityData = {{ activity_json | safe }};
+    const graphContainer = document.getElementById('contribution-graph');
+    const monthsContainer = document.getElementById('months-row');
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // 2. Setup Dates (Last 365 Days)
+    const today = new Date();
+    // 53 weeks * 7 days = 371 days to ensure full columns
+    const daysToShow = 53 * 7; 
+    
+    const dates = [];
+    for (let i = 0; i < daysToShow; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() - i);
+        dates.push(d);
+    }
+    dates.reverse(); // [Oldest Date -> Today]
+
+    // 3. Logic to prevent label overlap
+    // Initialize with START date's month to skip first label if needed
+    let currentMonth = dates[0].getMonth(); 
+
+    // 4. Render
+    dates.forEach((dateObj, index) => {
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        const count = activityData[dateStr] || 0;
+
+        // --- GRID ---
+        let level = 'level-0';
+        if (count >= 1) level = 'level-1';
+        if (count >= 3) level = 'level-2';
+        if (count >= 5) level = 'level-3';
+        if (count >= 7) level = 'level-4';
+
+        const square = document.createElement('div');
+        square.classList.add('day-box', level);
+        const dateReadable = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        square.title = `${dateReadable}: ${count} quizzes`;
+        graphContainer.appendChild(square);
+
+        // --- LABELS ---
+        // Check only at the start of every column (week)
+        if (index % 7 === 0) {
+            const mIndex = dateObj.getMonth();
+            
+            // Only print label if the month has CHANGED
+            if (mIndex !== currentMonth) {
+                currentMonth = mIndex;
+                
+                const colIndex = index / 7;
+                const label = document.createElement('div');
+                label.textContent = monthNames[mIndex];
+                label.classList.add('month-label');
+                
+                // Position: Column Index * (Box Width 13px + Gap 4px = 17px)
+                label.style.left = `${colIndex * 17}px`;
+                
+                monthsContainer.appendChild(label);
+            }
+        }
+    });
+</script>
+{% endblock %}

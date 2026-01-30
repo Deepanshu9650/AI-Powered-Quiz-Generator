@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Study Mode - Flashcards{% endblock %}
+
+{% block content %}
+<style>
+    .flashcard-container {
+        perspective: 1000px;
+        width: 100%;
+        max-width: 600px;
+        height: 350px;
+        margin: 0 auto;
+        cursor: pointer;
+    }
+
+    .flashcard-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+    }
+
+    .flashcard-inner.flipped {
+        transform: rotateY(180deg);
+    }
+
+    .flashcard-front, .flashcard-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 30px;
+        border: 2px solid #e3f2fd;
+    }
+
+    .flashcard-front {
+        background-color: #ffffff;
+        color: #333;
+    }
+
+    .flashcard-back {
+        background-color: #0d6efd;
+        color: white;
+        transform: rotateY(180deg);
+    }
+</style>
+
+<div class="container py-5 text-center">
+    
+    <div class="mb-4">
+        <h2 class="fw-bold text-primary">📚 Flashcard Study Mode</h2>
+        <p class="text-muted">Click the card to flip. Use buttons to navigate.</p>
+    </div>
+
+    <div id="cards-wrapper">
+        {% for card in cards %}
+        <div class="flashcard-group {% if not loop.first %}d-none{% endif %}" data-index="{{ loop.index0 }}">
+            <div class="flashcard-container" onclick="this.querySelector('.flashcard-inner').classList.toggle('flipped')">
+                <div class="flashcard-inner">
+                    <div class="flashcard-front">
+                        <small class="text-uppercase text-muted fw-bold mb-3">Question</small>
+                        <h3 class="fw-bold">{{ card.text }}</h3>
+                    </div>
+                    <div class="flashcard-back">
+                        <small class="text-uppercase text-light opacity-75 fw-bold mb-3">Answer</small>
+                        <h4 class="fw-bold">{{ card.correct_answer }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-5 d-flex justify-content-center gap-3">
+        <button class="btn btn-outline-secondary btn-lg px-4" id="prevBtn" disabled onclick="changeCard(-1)">
+            <i class="fas fa-arrow-left"></i> Prev
+        </button>
+        <span class="align-self-center fw-bold text-muted">
+            <span id="currentIndex">1</span> / {{ cards|length }}
+        </span>
+        <button class="btn btn-primary btn-lg px-4" id="nextBtn" onclick="changeCard(1)">
+            Next <i class="fas fa-arrow-right"></i>
+        </button>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-link text-muted">Quit Study Session</a>
+    </div>
+
+</div>
+
+<script>
+    let currentIndex = 0;
+    const cards = document.querySelectorAll('.flashcard-group');
+    const total = cards.length;
+
+    function changeCard(direction) {
+        // Hide current
+        cards[currentIndex].classList.add('d-none');
+        
+        // Reset flip state (optional)
+        const inner = cards[currentIndex].querySelector('.flashcard-inner');
+        inner.classList.remove('flipped');
+
+        // Update Index
+        currentIndex += direction;
+
+        // Show new
+        cards[currentIndex].classList.remove('d-none');
+
+        // Update UI
+        document.getElementById('currentIndex').textContent = currentIndex + 1;
+        document.getElementById('prevBtn').disabled = (currentIndex === 0);
+        
+        if (currentIndex === total - 1) {
+            document.getElementById('nextBtn').innerHTML = 'Finish <i class="fas fa-check"></i>';
+            document.getElementById('nextBtn').classList.replace('btn-primary', 'btn-success');
+            document.getElementById('nextBtn').onclick = () => window.location.href = "{{ url_for('index') }}";
+        } else {
+            document.getElementById('nextBtn').innerHTML = 'Next <i class="fas fa-arrow-right"></i>';
+            document.getElementById('nextBtn').classList.replace('btn-success', 'btn-primary');
+            document.getElementById('nextBtn').onclick = () => changeCard(1);
+        }
+    }
+</script>
+{% endblock %}

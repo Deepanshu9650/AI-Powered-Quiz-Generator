@@ -6,7 +6,7 @@
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold text-primary">🧠 Quiz in Progress</h2>
-        <div class="badge bg-danger fs-5 shadow-sm p-2" id="timer-badge">
+        <div class="badge bg-primary fs-5 shadow-sm p-2" id="timer-badge">
             ⏳ <span id="timer">Loading...</span>
         </div>
     </div>
@@ -24,19 +24,50 @@
                 </div>
 
                 <div class="card-body ps-5">
-                    {% set opts = q.options.split('||') %}
-                    {% for opt in opts %}
-                        <div class="form-check mb-3 p-3 border rounded hover-option">
-                            <input class="form-check-input mt-1" type="radio" 
-                                   name="{{ q.id }}" 
-                                   id="{{ q.id }}_{{ loop.index }}" 
-                                   value="{{ opt }}" required>
-                            
-                            <label class="form-check-label w-100" for="{{ q.id }}_{{ loop.index }}">
-                                {{ opt | markdown | safe }}
+                    
+                    {# --- LOGIC: Check Question Type --- #}
+                    
+                    {% if q.q_type == 'Code' %}
+                        <div class="mt-2">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="fas fa-code"></i> Write your Python code below:
                             </label>
+                            <textarea class="form-control font-monospace bg-light border-secondary" 
+                                      name="{{ q.id }}" 
+                                      rows="8" 
+                                      placeholder="def solution():&#10;    # Write your code here..."
+                                      style="font-family: 'Consolas', 'Monaco', monospace; font-size: 0.95rem;"></textarea>
                         </div>
-                    {% endfor %}
+
+                    {% elif q.q_type == 'Theory' %}
+                        <div class="mt-2">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="fas fa-pen"></i> Type your explanation:
+                            </label>
+                            <textarea class="form-control" 
+                                      name="{{ q.id }}" 
+                                      rows="4" 
+                                      placeholder="Explain your answer here..."></textarea>
+                        </div>
+
+                    {% else %}
+                        {% if q.options %}
+                            {% set opts = q.options.split('||') %}
+                            {% for opt in opts %}
+                                <div class="form-check mb-3 p-3 border rounded hover-option">
+                                    <input class="form-check-input mt-1" type="radio" 
+                                           name="{{ q.id }}" 
+                                           id="{{ q.id }}_{{ loop.index }}" 
+                                           value="{{ opt }}" required>
+                                    
+                                    <label class="form-check-label w-100" for="{{ q.id }}_{{ loop.index }}">
+                                        {{ opt | markdown | safe }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endif %}
+
                 </div>
             </div>
         {% endfor %}
@@ -66,8 +97,8 @@
 </style>
 
 <script>
-    // Get duration from server-side session, default to 60s if missing
-    let timeLeft = {{ session.get('duration', 60) }}; 
+    // Get duration from passed variable (or session fallback)
+    let timeLeft = {{ duration }}; 
     
     const timerDisplay = document.getElementById("timer");
     const timerBadge = document.getElementById("timer-badge");
@@ -76,7 +107,6 @@
     function formatTime(seconds) {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        // Add leading zero if seconds < 10
         return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
     }
 
