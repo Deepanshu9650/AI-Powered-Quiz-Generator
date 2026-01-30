@@ -20,7 +20,15 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "super_secret_key_change_me")
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///quiz.db'
+
+# --- DATABASE CONFIGURATION (UPDATED FOR RENDER) ---
+# This logic checks if we are on Render (using Postgres) or Local (using SQLite)
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///quiz.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -390,6 +398,7 @@ def quit_quiz(): return redirect(url_for('index'))
 @app.template_filter('markdown')
 def markdown_filter(text): return markdown.markdown(text or "")
 
+# Ensure tables are created (Works for both SQLite and Postgres)
 with app.app_context(): db.create_all()
 
 if __name__ == '__main__': app.run(debug=True)
