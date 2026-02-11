@@ -44,7 +44,7 @@ def load_user(user_id):
 api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash') # Updated to latest stable model name if needed, or keep 1.5-flash
 
 # ------------------ DATABASE MODELS ------------------
 class User(UserMixin, db.Model):
@@ -57,7 +57,7 @@ class User(UserMixin, db.Model):
     last_quiz_date = db.Column(db.Date, nullable=True) 
     
     history = db.relationship('QuizResult', backref='student', lazy=True)
-    # [NEW] Relationship for badges
+    # Relationship for badges
     achievements = db.relationship('Achievement', backref='owner', lazy=True)
 
 class Achievement(db.Model):
@@ -88,7 +88,7 @@ class QuizResult(db.Model):
 
 # ------------------ HELPER FUNCTIONS ------------------
 
-# [NEW] Check & Award Badges
+# Check & Award Badges
 def check_achievements(user, result):
     badges_earned = []
     existing_badges = [a.name for a in user.achievements]
@@ -168,7 +168,7 @@ def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="
         json_structure = """[{"question": "Write python code...", "options": [], "correct_answer": "def solution():...", "explanation": "..."}]"""
         type_prompt = "coding challenges"
     elif q_type == "Flashcard":
-        # [NEW] Flashcard Schema
+        # Flashcard Schema
         json_structure = """[{"question": "Concept/Term", "options": [], "correct_answer": "Definition/Answer", "explanation": "..."}]"""
         type_prompt = "flashcards (Concept on front, Definition on back)"
 
@@ -320,7 +320,7 @@ def generate_quiz():
             db.session.add(Question(text=q['question'], q_type=q_type, options=options_val, correct_answer=q['correct_answer'], explanation=q.get('explanation', '')))
         db.session.commit()
         
-        # [NEW] Redirect to Flashcards if type is flashcard
+        # Redirect to Flashcards if type is flashcard
         if q_type == 'Flashcard':
             return redirect(url_for('flashcards'))
             
@@ -328,7 +328,7 @@ def generate_quiz():
     except:
         return redirect(url_for('index'))
 
-# [NEW] Flashcards Route
+# Flashcards Route
 @app.route('/flashcards')
 @login_required
 def flashcards():
@@ -384,7 +384,7 @@ def submit():
     )
     db.session.add(new_result)
     
-    # [NEW] Check Badges logic
+    # Check Badges logic
     update_user_streak(current_user)
     check_achievements(current_user, new_result)
     
@@ -398,7 +398,10 @@ def quit_quiz(): return redirect(url_for('index'))
 @app.template_filter('markdown')
 def markdown_filter(text): return markdown.markdown(text or "")
 
-# Ensure tables are created (Works for both SQLite and Postgres)
+# Ensure tables are created
 with app.app_context(): db.create_all()
 
-if __name__ == '__main__': app.run(debug=True)
+# --- FIXED SECTION FOR RENDER DEPLOYMENT ---
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
