@@ -10,25 +10,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
-        /* --- BLUE THEME VARIABLES --- */
+        /* --- THEME VARIABLES --- */
         :root {
-            --primary-blue: #0056b3;
-            --light-blue-bg: #e3f2fd;
-            --navbar-gradient: linear-gradient(90deg, #004e92, #000428);
+            --bg-color: linear-gradient(135deg, #e3f2fd 0%, #f1f8ff 100%);
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --navbar-bg: linear-gradient(90deg, #004e92, #000428);
+            --border-color: #ddd;
+            --table-text: #212529;
+            --muted-text: #6c757d;
+        }
+
+        /* DARK MODE OVERRIDES */
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --card-bg: #1e1e1e;
+            --navbar-bg: #1a1a1a;
+            --border-color: #444;
+            --table-text: #e0e0e0;
+            --muted-text: #adb5bd;
         }
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #e3f2fd 0%, #f1f8ff 100%); /* Soft Blue Background */
+            background: var(--bg-color);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            color: #333;
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
         }
 
-        /* --- NAVBAR STYLING --- */
+        /* NAVBAR STYLING */
         .navbar {
             background: var(--navbar-gradient) !important;
+            background-image: var(--navbar-bg) !important;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
         .navbar-brand {
@@ -44,24 +61,43 @@
             color: #fff !important;
             text-shadow: 0 0 5px rgba(255,255,255,0.5);
         }
-        /* Specific override for the profile name to be white */
-        .nav-link.text-primary {
-            color: #fff !important; 
-        }
 
-        /* --- CARD & CONTAINER STYLING --- */
-        /* This makes the white boxes (login, quiz, profile) pop off the blue background */
-        .card, .container-box {
-            background: #ffffff;
-            border: none;
+        /* CARD & CONTAINER STYLING */
+        .card, .container-box, .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
             border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0, 78, 146, 0.1); /* Blue tinted shadow */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-color) !important;
         }
 
-        /* --- GLOBAL STYLES FOR MARKDOWN CONTENT --- */
+        .text-muted {
+            color: var(--muted-text) !important;
+        }
+
+        /* TABLE FIXES FOR DARK MODE */
+        .table {
+            color: var(--table-text) !important;
+            border-color: var(--border-color) !important;
+        }
+        .table thead th {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+        }
+        .table td {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* MARKDOWN CONTENT */
         pre {
-            background: #f1f8ff !important; /* Light blue tint */
-            border: 1px solid #cfe2ff;
+            background: var(--bg-color) !important;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 15px;
             overflow-x: auto;
@@ -70,33 +106,36 @@
         }
         code {
             font-family: Consolas, "Courier New", monospace;
-            color: #0d6efd; /* Blue text for code */
-            background-color: rgba(13, 110, 253, 0.05);
+            color: #0d6efd;
             padding: 2px 4px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        pre code {
-            color: #212529;
-            background-color: transparent;
-            padding: 0;
-            white-space: pre;
-            display: block;
-            border: none;
-        }
-        .form-check-label p, 
-        .answer-text p {
-            display: inline;
-            margin: 0;
         }
 
-        /* --- FOOTER --- */
+        /* FOOTER */
         footer {
-            background: #000428; /* Dark Blue */
+            background: #000428;
             color: rgba(255,255,255,0.6);
             border-top: none;
         }
     </style>
+
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+    </script>
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -111,24 +150,26 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item me-2">
+                        <button onclick="toggleTheme()" class="btn btn-outline-light btn-sm rounded-circle" title="Toggle Dark Mode">
+                            <i class="fas fa-adjust"></i>
+                        </button>
+                    </li>
+
                     {% if current_user.is_authenticated %}
-                        
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('leaderboard') }}">
                                 <i class="fas fa-trophy text-warning"></i> Leaderboard
                             </a>
                         </li>
-
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                         </li>
-
                         <li class="nav-item">
                             <a class="nav-link fw-bold" href="{{ url_for('profile') }}">
                                 <i class="fas fa-user-circle"></i> {{ current_user.username }}
                             </a>
                         </li>
-                        
                         <li class="nav-item ms-2">
                             <a class="btn btn-outline-light btn-sm rounded-pill px-3" href="{{ url_for('logout') }}">Logout</a>
                         </li>
