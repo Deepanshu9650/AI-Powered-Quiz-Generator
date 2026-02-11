@@ -22,7 +22,6 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "super_secret_key_change_me")
 
 # --- DATABASE CONFIGURATION (UPDATED FOR RENDER) ---
-# This logic checks if we are on Render (using Postgres) or Local (using SQLite)
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url and database_url.startswith("postgres://"):
@@ -44,7 +43,8 @@ def load_user(user_id):
 api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash') # Updated to latest stable model name if needed, or keep 1.5-flash
+    # [FIX] Switched to 1.5-flash (STABLE) to prevent generation errors
+    model = genai.GenerativeModel('gemini-1.5-flash') 
 
 # ------------------ DATABASE MODELS ------------------
 class User(UserMixin, db.Model):
@@ -57,15 +57,14 @@ class User(UserMixin, db.Model):
     last_quiz_date = db.Column(db.Date, nullable=True) 
     
     history = db.relationship('QuizResult', backref='student', lazy=True)
-    # Relationship for badges
     achievements = db.relationship('Achievement', backref='owner', lazy=True)
 
 class Achievement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False) # e.g. "Sniper"
-    description = db.Column(db.String(200), nullable=False) # e.g. "Score 100%"
-    icon = db.Column(db.String(50), nullable=False) # FontAwesome class e.g. "fa-bullseye"
+    name = db.Column(db.String(100), nullable=False) 
+    description = db.Column(db.String(200), nullable=False) 
+    icon = db.Column(db.String(50), nullable=False) 
     date_earned = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Question(db.Model):
@@ -88,31 +87,26 @@ class QuizResult(db.Model):
 
 # ------------------ HELPER FUNCTIONS ------------------
 
-# Check & Award Badges
 def check_achievements(user, result):
     badges_earned = []
     existing_badges = [a.name for a in user.achievements]
 
-    # 1. First Quiz Badge
     if "First Steps" not in existing_badges:
         new_badge = Achievement(user_id=user.id, name="First Steps", description="Completed your first quiz", icon="fa-shoe-prints")
         db.session.add(new_badge)
         badges_earned.append("First Steps")
 
-    # 2. Perfect Score Badge
     if result.score == result.total_questions and result.total_questions >= 5 and "Sniper" not in existing_badges:
         new_badge = Achievement(user_id=user.id, name="Sniper", description="Scored 100% on a quiz (min 5 Qs)", icon="fa-crosshairs")
         db.session.add(new_badge)
         badges_earned.append("Sniper")
 
-    # 3. Streak Badge (3 Days)
     if user.current_streak >= 3 and "On Fire" not in existing_badges:
         new_badge = Achievement(user_id=user.id, name="On Fire", description="Reached a 3-day streak", icon="fa-fire")
         db.session.add(new_badge)
         badges_earned.append("On Fire")
 
-    # 4. Dedication Badge (10 Quizzes Total)
-    total_quizzes = len(user.history) # Note: history includes the current one usually
+    total_quizzes = len(user.history) 
     if total_quizzes >= 10 and "Dedicated" not in existing_badges:
         new_badge = Achievement(user_id=user.id, name="Dedicated", description="Completed 10 quizzes", icon="fa-dumbbell")
         db.session.add(new_badge)
@@ -120,7 +114,6 @@ def check_achievements(user, result):
 
     if badges_earned:
         db.session.commit()
-        # Flash a special message
         flash(f"🏆 Achievement Unlocked: {', '.join(badges_earned)}!", "success")
 
 def update_user_streak(user):
@@ -168,7 +161,6 @@ def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="
         json_structure = """[{"question": "Write python code...", "options": [], "correct_answer": "def solution():...", "explanation": "..."}]"""
         type_prompt = "coding challenges"
     elif q_type == "Flashcard":
-        # Flashcard Schema
         json_structure = """[{"question": "Concept/Term", "options": [], "correct_answer": "Definition/Answer", "explanation": "..."}]"""
         type_prompt = "flashcards (Concept on front, Definition on back)"
 
@@ -183,7 +175,8 @@ def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="
     try:
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         return response.text.strip()
-    except:
+    except Exception as e:
+        print(f"-------- GEMINI ERROR --------\n{e}\n------------------------------")
         return None
 
 def grade_answers_with_ai(qa_pairs):
@@ -257,6 +250,30 @@ def profile(username=None):
         activity_data[day_str] = activity_data.get(day_str, 0) + 1
         
     return render_template('profile.html', user=user_obj, history=history, activity_json=json.dumps(activity_data))
+
+# [FIX] Added Route for Reviewing Past Quizzes (THIS WAS MISSING)
+@app.route('/review/<int:result_id>')
+@login_required
+def review_quiz(result_id):
+    result = QuizResult.query.get_or_404(result_id)
+    
+    # Security check: Ensure the current user owns this result
+    if result.user_id != current_user.id:
+        flash("You are not authorized to view this result.", "danger")
+        return redirect(url_for('index'))
+    
+    # Load the saved JSON details
+    try:
+        results_data = json.loads(result.details) if result.details else []
+    except:
+        results_data = []
+
+    # Reuse the 'result.html' template to show the data
+    return render_template('result.html', 
+                           score=result.score, 
+                           total=result.total_questions, 
+                           results=results_data, 
+                           q_type="Review")
 
 @app.route('/download_result/<int:result_id>')
 @login_required
