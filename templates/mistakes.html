@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-book-dead text-danger me-2"></i>Mistake Notebook</h2>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Home</a>
+    </div>
+
+    {% if mistakes %}
+        <div class="row">
+            {% for mistake in mistakes %}
+            <div class="col-md-12 mb-3">
+                <div class="card border-danger border-2 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="card-title text-danger">Topic: {{ mistake.topic }}</h5>
+                            <small class="text-muted">{{ mistake.date.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                        
+                        <p class="fw-bold mt-3">{{ mistake.question }}</p>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert alert-danger p-2 mb-0">
+                                    <small class="fw-bold">Your Wrong Answer:</small><br>
+                                    {{ mistake.your_answer }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-success p-2 mb-0">
+                                    <small class="fw-bold">Correct Answer:</small><br>
+                                    {{ mistake.correct_answer }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 bg-light p-3 rounded border">
+                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                            <span class="text-muted small">{{ mistake.explanation }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-check-circle text-success fa-4x mb-3"></i>
+            <h3>No mistakes found!</h3>
+            <p class="text-muted">You haven't made any mistakes yet, or you haven't taken any quizzes.</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">Take a Quiz</a>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

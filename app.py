@@ -3,6 +3,7 @@ import json
 import PyPDF2 
 import markdown
 import io
+import re
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -10,6 +11,8 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 import google.generativeai as genai
 from dotenv import load_dotenv
+# [ADDED] YouTube Library
+from youtube_transcript_api import YouTubeTranscriptApi
 
 # PDF Gen
 from reportlab.lib.pagesizes import letter
@@ -21,9 +24,8 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "super_secret_key_change_me")
 
-# --- DATABASE CONFIGURATION (UPDATED FOR RENDER) ---
+# --- DATABASE CONFIGURATION ---
 database_url = os.environ.get('DATABASE_URL')
-
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
@@ -43,8 +45,7 @@ def load_user(user_id):
 api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
-    # [FIX] Switched to 1.5-flash (STABLE) to prevent generation errors
-    model = genai.GenerativeModel('gemini-1.5-flash') 
+    model = genai.GenerativeModel('gemini-2.5-flash') 
 
 # ------------------ DATABASE MODELS ------------------
 class User(UserMixin, db.Model):
@@ -111,6 +112,12 @@ def check_achievements(user, result):
         new_badge = Achievement(user_id=user.id, name="Dedicated", description="Completed 10 quizzes", icon="fa-dumbbell")
         db.session.add(new_badge)
         badges_earned.append("Dedicated")
+    
+    # [ADDED] YouTube Achievement
+    if "YouTube" in result.topic and "Video Learner" not in existing_badges:
+        new_badge = Achievement(user_id=user.id, name="Video Learner", description="Generated a quiz from a YouTube video", icon="fa-video")
+        db.session.add(new_badge)
+        badges_earned.append("Video Learner")
 
     if badges_earned:
         db.session.commit()
@@ -148,6 +155,44 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         return ""
 
+# [ADDED] Smarter YouTube Extractor (Handles Auto-Gen Captions)
+def extract_text_from_youtube(video_url):
+    try:
+        # 1. robustly extract video ID
+        video_id = ""
+        if "v=" in video_url:
+            video_id = video_url.split("v=")[1].split("&")[0]
+        elif "youtu.be/" in video_url:
+            video_id = video_url.split("youtu.be/")[1].split("?")[0]
+        elif "shorts/" in video_url:
+             video_id = video_url.split("shorts/")[1].split("?")[0]
+        
+        if not video_id: return None
+
+        # 2. Try to fetch transcript (Manual OR Auto-generated)
+        try:
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # Find the first available transcript (English first, then any)
+            try:
+                transcript = transcript_list.find_transcript(['en', 'en-US'])
+            except:
+                # If no English, take the first available one (even auto-generated)
+                transcript = next(iter(transcript_list))
+                
+            # 3. Actually fetch the text
+            full_transcript = transcript.fetch()
+            full_text = " ".join([t['text'] for t in full_transcript])
+            return full_text
+            
+        except Exception as e:
+            print(f"Transcript Fetch Error: {e}")
+            return None
+            
+    except Exception as e:
+        print(f"URL Parsing Error: {e}")
+        return None
+
 def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="Medium", q_type="MCQ"):
     
     # Define Schema based on type
@@ -163,6 +208,9 @@ def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="
     elif q_type == "Flashcard":
         json_structure = """[{"question": "Concept/Term", "options": [], "correct_answer": "Definition/Answer", "explanation": "..."}]"""
         type_prompt = "flashcards (Concept on front, Definition on back)"
+    elif q_type == "Interview":
+        json_structure = """[{"question": "Interviewer: ...", "options": [], "correct_answer": "Ideal Candidate Answer: ...", "explanation": "Key concepts to mention..."}]"""
+        type_prompt = "behavioral or technical interview questions. Write questions as if an interviewer is asking them."
 
     context = f"Topic: {topic}" if topic else f"Source Text: {source_text[:50000]}"
     
@@ -251,29 +299,49 @@ def profile(username=None):
         
     return render_template('profile.html', user=user_obj, history=history, activity_json=json.dumps(activity_data))
 
-# [FIX] Added Route for Reviewing Past Quizzes (THIS WAS MISSING)
+# MISTAKE NOTEBOOK ROUTE
+@app.route('/mistakes')
+@login_required
+def mistakes():
+    # Fetch all quizzes where score < total questions (meaning they made a mistake)
+    imperfect_quizzes = QuizResult.query.filter(
+        QuizResult.user_id == current_user.id, 
+        QuizResult.score < QuizResult.total_questions
+    ).all()
+    
+    mistake_list = []
+    
+    for quiz in imperfect_quizzes:
+        try:
+            details = json.loads(quiz.details)
+            for q in details:
+                # If the question was answered incorrectly
+                if not q.get('is_correct'):
+                    mistake_list.append({
+                        'question': q.get('question'),
+                        'your_answer': q.get('selected'),
+                        'correct_answer': q.get('correct'),
+                        'explanation': q.get('explanation'),
+                        'topic': quiz.topic,
+                        'date': quiz.date_taken
+                    })
+        except:
+            continue
+            
+    return render_template('mistakes.html', mistakes=mistake_list)
+
 @app.route('/review/<int:result_id>')
 @login_required
 def review_quiz(result_id):
     result = QuizResult.query.get_or_404(result_id)
-    
-    # Security check: Ensure the current user owns this result
     if result.user_id != current_user.id:
         flash("You are not authorized to view this result.", "danger")
         return redirect(url_for('index'))
-    
-    # Load the saved JSON details
     try:
         results_data = json.loads(result.details) if result.details else []
     except:
         results_data = []
-
-    # Reuse the 'result.html' template to show the data
-    return render_template('result.html', 
-                           score=result.score, 
-                           total=result.total_questions, 
-                           results=results_data, 
-                           q_type="Review")
+    return render_template('result.html', score=result.score, total=result.total_questions, results=results_data, q_type="Review")
 
 @app.route('/download_result/<int:result_id>')
 @login_required
@@ -316,16 +384,31 @@ def generate_quiz():
     session['duration'] = int(request.form.get('duration', 60))
 
     quiz_json_text = None
+    
+    # CASE 1: PDF Upload
     if 'pdf_file' in request.files and request.files['pdf_file'].filename != '':
         file = request.files['pdf_file']
         pdf_text = extract_text_from_pdf(file)
         if pdf_text:
             session['last_topic'] = f"PDF: {file.filename}"
             quiz_json_text = generate_quiz_questions(source_text=pdf_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
+    
+    # CASE 2: Text Input (Topic or YouTube URL)
     elif 'topic' in request.form:
-        topic = request.form['topic']
-        session['last_topic'] = topic
-        quiz_json_text = generate_quiz_questions(topic=topic, qcount=q_limit, difficulty=difficulty, q_type=q_type)
+        raw_input = request.form['topic']
+        
+        # [ADDED] Check if it's a YouTube Link
+        if "youtube.com" in raw_input or "youtu.be" in raw_input or "shorts" in raw_input:
+            youtube_text = extract_text_from_youtube(raw_input)
+            if youtube_text:
+                session['last_topic'] = f"YouTube Video Quiz"
+                quiz_json_text = generate_quiz_questions(source_text=youtube_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
+            else:
+                flash("Could not retrieve captions from this YouTube video. Try another one with subtitles!", "danger")
+                return redirect(url_for('index'))
+        else:
+            session['last_topic'] = raw_input
+            quiz_json_text = generate_quiz_questions(topic=raw_input, qcount=q_limit, difficulty=difficulty, q_type=q_type)
 
     if not quiz_json_text: return redirect(url_for('index'))
 
@@ -337,15 +420,11 @@ def generate_quiz():
             db.session.add(Question(text=q['question'], q_type=q_type, options=options_val, correct_answer=q['correct_answer'], explanation=q.get('explanation', '')))
         db.session.commit()
         
-        # Redirect to Flashcards if type is flashcard
-        if q_type == 'Flashcard':
-            return redirect(url_for('flashcards'))
-            
+        if q_type == 'Flashcard': return redirect(url_for('flashcards'))
         return redirect(url_for('quiz'))
     except:
         return redirect(url_for('index'))
 
-# Flashcards Route
 @app.route('/flashcards')
 @login_required
 def flashcards():
@@ -401,10 +480,8 @@ def submit():
     )
     db.session.add(new_result)
     
-    # Check Badges logic
     update_user_streak(current_user)
     check_achievements(current_user, new_result)
-    
     db.session.commit()
     
     return render_template('result.html', score=score, total=len(questions), results=results, q_type=q_type)
@@ -415,10 +492,8 @@ def quit_quiz(): return redirect(url_for('index'))
 @app.template_filter('markdown')
 def markdown_filter(text): return markdown.markdown(text or "")
 
-# Ensure tables are created
 with app.app_context(): db.create_all()
 
-# --- FIXED SECTION FOR RENDER DEPLOYMENT ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)

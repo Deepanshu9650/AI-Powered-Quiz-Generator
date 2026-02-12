@@ -7,45 +7,74 @@
         <div class="col-md-8 col-lg-7">
             
             <div class="text-center mb-5">
-                <h1 class="display-5 fw-bold text-primary">🧠 AI Quiz Generator</h1>
-                <p class="text-muted fs-5">Generate a custom quiz from a topic or your own study notes.</p>
+                <h1 class="display-5 fw-bold" style="color: var(--accent-color);">
+                    <i class="fas fa-brain me-2"></i>AI Quiz Generator
+                </h1>
+                <p class="text-muted fs-5">Generate a custom quiz from a topic, YouTube video, or PDF.</p>
             </div>
 
-            <div class="card shadow-lg border-0 mb-5">
-                <div class="card-header bg-white border-bottom-0 pt-4">
-                    <ul class="nav nav-tabs card-header-tabs justify-content-center" id="quizTabs" role="tablist">
+            <div class="card shadow-lg border-0 mb-4 container-box">
+                <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
+                    <ul class="nav nav-pills nav-fill" id="quizTabs" role="tablist">
                         <li class="nav-item">
-                            <button class="nav-link active fw-bold" id="topic-tab" data-bs-toggle="tab" data-bs-target="#topic-mode" type="button">
-                                🖊️ By Topic
+                            <button class="nav-link active fw-bold" id="topic-tab" data-bs-toggle="pill" data-bs-target="#topic-mode" type="button">
+                                <i class="fas fa-keyboard me-2"></i>Topic / YouTube
                             </button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link fw-bold" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-mode" type="button">
-                                📄 By PDF Upload
+                            <button class="nav-link fw-bold" id="pdf-tab" data-bs-toggle="pill" data-bs-target="#pdf-mode" type="button">
+                                <i class="fas fa-file-pdf me-2"></i>By PDF Upload
                             </button>
                         </li>
                     </ul>
                 </div>
 
                 <div class="card-body p-4 p-md-5">
-                    <form method="post" action="{{ url_for('generate_quiz') }}" enctype="multipart/form-data">
+                    <form method="post" action="{{ url_for('generate_quiz') }}" enctype="multipart/form-data" onsubmit="showLoading()">
                         
                         <div class="tab-content mb-4" id="quizTabContent">
                             
                             <div class="tab-pane fade show active" id="topic-mode" role="tabpanel">
-                                <label for="topic" class="form-label fw-bold">Enter Quiz Topic</label>
-                                <input type="text" id="topic" name="topic" class="form-control form-control-lg" placeholder="e.g. Python Programming, Ancient History...">
-                                <div class="form-text">The AI will generate questions based on general knowledge of this topic.</div>
+                                
+                                <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+                                    <div class="d-flex">
+                                        <i class="fas fa-exclamation-triangle fa-2x me-3 text-warning mt-1"></i>
+                                        <div>
+                                            <h6 class="fw-bold mb-1" style="color: #856404;">⚠️ Feature Under Maintenance</h6>
+                                            <p class="mb-0 small" style="color: #856404;">
+                                                The <strong>YouTube Link</strong> generation is currently unstable. We will resolve this in a future update. Please use <strong>Topics</strong> or <strong>PDFs</strong> for best results.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="topic" class="form-label fw-bold">Enter Topic or YouTube URL</label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-light text-muted border-end-0">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                        <input type="text" id="topic" name="topic" class="form-control border-start-0 ps-0" 
+                                            placeholder="e.g. Python Loops OR https://youtube.com/watch?v=..." required>
+                                    </div>
+                                    <div class="form-text mt-2">
+                                        <i class="fab fa-youtube text-danger me-1"></i> Paste a YouTube link to quiz yourself on a video!
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="tab-pane fade" id="pdf-mode" role="tabpanel">
-                                <label for="pdf_file" class="form-label fw-bold">Upload Study Material (PDF)</label>
-                                <input type="file" id="pdf_file" name="pdf_file" class="form-control form-control-lg" accept="application/pdf">
-                                <div class="form-text">Upload a resume, chapter, or notes (Max 20 pages). The AI will test you on this content.</div>
+                                <div class="mb-3">
+                                    <label for="pdf_file" class="form-label fw-bold">Upload Study Material (PDF)</label>
+                                    <input type="file" id="pdf_file" name="pdf_file" class="form-control form-control-lg" accept="application/pdf">
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-file-alt text-primary me-1"></i> Upload a resume, chapter, or notes (Max 20 pages).
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <hr class="my-4 text-muted">
+                        <hr class="my-4" style="border-color: var(--border-color);">
 
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -64,6 +93,7 @@
                                     <option value="MCQ" selected>Multiple Choice</option>
                                     <option value="Theory">Theory (Short Answer)</option>
                                     <option value="Code">Coding Challenge</option>
+                                    <option value="Interview">🎤 Mock Interview</option>
                                     <option value="Flashcard">📚 Flashcard Study</option>
                                 </select>
                             </div>
@@ -84,14 +114,14 @@
                                     <option value="600">10 Min</option>
                                     <option value="1800">30 Min</option>
                                     <option value="3600">60 Min</option>
-                                    <option value="5400">90 Min</option>
+                                    <option value="999999">No Limit</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="d-grid mt-5">
-                            <button type="submit" class="btn btn-primary btn-lg py-3 fw-bold shadow-sm">
-                                🚀 Generate
+                            <button type="submit" class="btn btn-primary btn-lg py-3 fw-bold shadow-sm" style="background-color: var(--accent-color); border: none;">
+                                <i class="fas fa-magic me-2"></i>Generate Quiz
                             </button>
                         </div>
 
@@ -99,10 +129,18 @@
                 </div>
             </div>
 
+            <div class="d-grid mb-5">
+                <a href="{{ url_for('mistakes') }}" class="btn btn-outline-danger btn-lg py-3 fw-bold shadow-sm border-2">
+                    <i class="fas fa-book-dead me-2"></i>Open Mistake Notebook
+                </a>
+            </div>
+
             <div class="mt-5">
-                <h3 class="mb-4 fw-bold">📜 Your Quiz History</h3>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="fw-bold mb-0">📜 Your Quiz History</h3>
+                </div>
                 
-                <div class="card shadow-sm border-0">
+                <div class="card shadow-sm border-0 container-box">
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 align-middle">
@@ -115,29 +153,41 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for item in history %}
-                                    <tr>
-                                        <td class="ps-4 fw-bold">{{ item.topic }}</td>
-                                        <td>
-                                            <span class="fw-bold">{{ item.score }}</span> 
-                                            <span class="text-muted small">/ {{ item.total_questions }}</span>
-                                        </td>
-                                        <td class="text-muted small">{{ item.date_taken.strftime('%b %d, %Y') }}</td>
-                                        <td class="text-end pe-4">
-                                            <a href="{{ url_for('review_quiz', result_id=item.id) }}" class="btn btn-warning btn-sm rounded-pill px-3">
-                                                <i class="fas fa-eye"></i> Review
-                                            </a>
-                                        </td>
-                                    </tr>
+                                    {% if history %}
+                                        {% for item in history %}
+                                        <tr>
+                                            <td class="ps-4 fw-bold text-truncate" style="max-width: 200px;">
+                                                {% if "YouTube" in item.topic %}
+                                                    <i class="fab fa-youtube text-danger me-2"></i>
+                                                {% elif "PDF" in item.topic %}
+                                                    <i class="fas fa-file-pdf text-warning me-2"></i>
+                                                {% else %}
+                                                    <i class="fas fa-lightbulb text-info me-2"></i>
+                                                {% endif %}
+                                                {{ item.topic }}
+                                            </td>
+                                            <td>
+                                                <span class="badge rounded-pill bg-{{ 'success' if item.score/item.total_questions > 0.7 else 'secondary' }}">
+                                                    {{ item.score }} / {{ item.total_questions }}
+                                                </span>
+                                            </td>
+                                            <td class="text-muted small">{{ item.date_taken.strftime('%b %d') }}</td>
+                                            <td class="text-end pe-4">
+                                                <a href="{{ url_for('review_quiz', result_id=item.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                    Review
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
                                     {% else %}
-                                    <tr>
-                                        <td colspan="4" class="text-center py-5 text-muted">
-                                            <div class="fs-1 mb-2">📂</div>
-                                            <p class="mb-1">No quizzes taken yet.</p>
-                                            <small>Generate your first quiz above to start tracking progress!</small>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
+                                        <tr>
+                                            <td colspan="4" class="text-center py-5 text-muted">
+                                                <div class="fs-1 mb-2">📂</div>
+                                                <p class="mb-1">No quizzes taken yet.</p>
+                                                <small>Generate your first quiz above to start tracking progress!</small>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
                                 </tbody>
                             </table>
                         </div>
@@ -149,21 +199,26 @@
     </div>
 </div>
 
-<div id="loadingOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75" style="z-index: 9999;">
-    <div class="text-center">
-        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+<div id="loadingOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" style="z-index: 9999; backdrop-filter: blur(5px);">
+    <div class="text-center text-white">
+        <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
-        <h4 class="mt-3 text-primary fw-bold">🤖 AI is generating...</h4>
-        <p class="text-muted">This may take a few seconds.</p>
+        <h3 class="fw-bold">🤖 AI is thinking...</h3>
+        <p class="text-white-50">Analyzing content & generating questions.</p>
     </div>
 </div>
 
 <script>
-    // JavaScript to show the loading overlay when the form is submitted
-    document.querySelector('form').addEventListener('submit', function() {
-        document.getElementById('loadingOverlay').classList.remove('d-none');
-    });
+    function showLoading() {
+        const topicInput = document.getElementById('topic');
+        const pdfInput = document.getElementById('pdf_file');
+        
+        // Only show loading if at least one input has value (form is valid)
+        if ((topicInput && topicInput.value.trim() !== "") || (pdfInput && pdfInput.files.length > 0)) {
+            document.getElementById('loadingOverlay').classList.remove('d-none');
+        }
+    }
 </script>
 
 {% endblock %}

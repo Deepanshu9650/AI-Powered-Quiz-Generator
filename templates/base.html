@@ -12,41 +12,47 @@
     <style>
         /* --- THEME VARIABLES --- */
         :root {
-            --bg-color: linear-gradient(135deg, #e3f2fd 0%, #f1f8ff 100%);
-            --text-color: #333;
+            /* Light Mode Default Colors */
+            --bg-color: #f8fafc;        /* Very light grey-blue */
+            --text-color: #334155;      /* Dark slate text */
             --card-bg: #ffffff;
-            --navbar-bg: linear-gradient(90deg, #004e92, #000428);
-            --border-color: #ddd;
-            --table-text: #212529;
-            --muted-text: #6c757d;
+            --navbar-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --border-color: #e2e8f0;
+            --input-bg: #ffffff;
+            --input-text: #334155;
+            --muted-text: #64748b;
+            --accent-color: #3b82f6;    /* Bright Blue */
+            --option-hover: #f1f5f9;
         }
 
-        /* DARK MODE OVERRIDES */
+        /* --- DARK MODE OVERRIDES (The LeetCode-ish Blue Theme) --- */
         [data-theme="dark"] {
-            --bg-color: #121212;
-            --text-color: #e0e0e0;
-            --card-bg: #1e1e1e;
-            --navbar-bg: #1a1a1a;
-            --border-color: #444;
-            --table-text: #e0e0e0;
-            --muted-text: #adb5bd;
+            --bg-color: #0f172a;       /* Main Background: Deep Slate */
+            --text-color: #e2e8f0;     /* Text: Light Grey-White */
+            --card-bg: #1e293b;        /* Cards: Lighter Slate Blue */
+            --navbar-bg: #1e293b;      /* Navbar: Matches Cards */
+            --border-color: #334155;   /* Borders: Subtle Grey-Blue */
+            --input-bg: #334155;       /* Inputs: Dark Grey-Blue */
+            --input-text: #ffffff;     /* Input Text: Pure White */
+            --muted-text: #94a3b8;     /* Muted: Lighter Grey */
+            --option-hover: #475569;   /* Hover state for options */
         }
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: var(--bg-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            color: var(--text-color);
-            transition: background 0.3s, color 0.3s;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* NAVBAR STYLING */
         .navbar {
-            background: var(--navbar-gradient) !important;
-            background-image: var(--navbar-bg) !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            background: var(--navbar-bg) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid var(--border-color);
         }
         .navbar-brand {
             color: #fff !important;
@@ -54,23 +60,24 @@
             letter-spacing: 0.5px;
         }
         .nav-link {
-            color: rgba(255, 255, 255, 0.85) !important;
-            transition: color 0.3s;
+            color: rgba(255, 255, 255, 0.8) !important;
+            transition: color 0.2s;
         }
         .nav-link:hover {
             color: #fff !important;
-            text-shadow: 0 0 5px rgba(255,255,255,0.5);
         }
 
         /* CARD & CONTAINER STYLING */
         .card, .container-box, .modal-content {
-            background: var(--card-bg);
+            background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: var(--text-color);
         }
         
-        h1, h2, h3, h4, h5, h6 {
+        /* HEADINGS & TEXT */
+        h1, h2, h3, h4, h5, h6, .card-title, .card-text {
             color: var(--text-color) !important;
         }
 
@@ -78,10 +85,42 @@
             color: var(--muted-text) !important;
         }
 
-        /* TABLE FIXES FOR DARK MODE */
+        /* --- FORM INPUTS (The Fix for Invisible Text) --- */
+        .form-control, .form-select {
+            background-color: var(--input-bg) !important;
+            color: var(--input-text) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+        .form-control::placeholder {
+            color: var(--muted-text) !important;
+            opacity: 1;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: var(--input-bg) !important;
+            color: var(--input-text) !important;
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+        }
+
+        /* --- QUIZ OPTIONS (List Groups) --- */
+        .list-group-item {
+            background-color: var(--input-bg); /* Darker background for options */
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            margin-bottom: 8px;
+            border-radius: 8px !important; /* Rounded corners for options */
+        }
+        .list-group-item:hover {
+            background-color: var(--option-hover);
+            cursor: pointer;
+            border-color: var(--accent-color);
+        }
+
+        /* TABLE FIXES */
         .table {
-            color: var(--table-text) !important;
+            color: var(--text-color) !important;
             border-color: var(--border-color) !important;
+            --bs-table-bg: transparent; /* Remove default bootstrap white bg */
         }
         .table thead th {
             background-color: var(--card-bg);
@@ -93,38 +132,60 @@
             color: var(--text-color);
             border-bottom: 1px solid var(--border-color);
         }
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            background-color: rgba(255, 255, 255, 0.05); /* Subtle stripe in dark mode */
+            color: var(--text-color);
+        }
 
-        /* MARKDOWN CONTENT */
+        /* MARKDOWN CONTENT (Code blocks) */
         pre {
             background: var(--bg-color) !important;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 15px;
-            overflow-x: auto;
-            margin: 1rem 0;
-            white-space: pre;
+            color: var(--text-color);
         }
         code {
-            font-family: Consolas, "Courier New", monospace;
-            color: #0d6efd;
-            padding: 2px 4px;
+            color: #3b82f6;
+            font-family: Consolas, monospace;
         }
 
         /* FOOTER */
         footer {
-            background: #000428;
-            color: rgba(255,255,255,0.6);
-            border-top: none;
+            background: var(--navbar-bg) !important;
+            color: var(--muted-text);
+            border-top: 1px solid var(--border-color);
         }
+
+        /* --- TAB TEXT COLOR OVERRIDE (Topic/PDF Buttons) --- */
+        /* Forces Black Text (#000000) for better visibility */
+        .nav-pills .nav-link {
+            color: #000000 !important; 
+            font-weight: 600;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: var(--accent-color) !important;
+            color: #000000 !important; 
+        }
+        
+        .nav-pills .nav-link i {
+            color: #000000 !important;
+        }
+
     </style>
 
     <script>
+        // THEME LOGIC: Default to Light, User Optional Toggle
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+            
+            // Only use dark if the user explicitly clicked it before.
+            // Ignore system preferences (prefers-color-scheme).
+            if (savedTheme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
             } else {
+                // Default to light for everyone else
                 document.documentElement.setAttribute('data-theme', 'light');
             }
         })();
@@ -151,7 +212,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item me-2">
-                        <button onclick="toggleTheme()" class="btn btn-outline-light btn-sm rounded-circle" title="Toggle Dark Mode">
+                        <button onclick="toggleTheme()" class="btn btn-outline-light btn-sm rounded-circle" title="Toggle Dark/Light Mode">
                             <i class="fas fa-adjust"></i>
                         </button>
                     </li>
