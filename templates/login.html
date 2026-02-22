@@ -1,35 +1,170 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-5">
-        <div class="card shadow">
-            <div class="card-body p-4">
-                <h2 class="text-center mb-4">Login</h2>
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
+<style>
+    :root {
+        --primary-glow: rgba(0, 212, 255, 0.6);
+        --accent-color: #00d4ff;
+    }
 
-                <form method="POST">
-                    <div class="mb-3">
-                        <label>Username</label>
-                        <input type="text" name="username" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>Password</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </form>
-                <p class="text-center mt-3">
-                    Don't have an account? <a href="{{ url_for('register') }}">Sign Up</a>
-                </p>
+    body {
+        background-color: #050505;
+        overflow: hidden; /* Prevents scrollbars during animation */
+        color: #fff;
+    }
+
+    #particle-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+    }
+
+    .auth-card {
+        background: rgba(15, 15, 25, 0.7);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        animation: portalEntrance 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes portalEntrance {
+        from { opacity: 0; transform: scale(0.8); filter: brightness(2) blur(10px); }
+        to { opacity: 1; transform: scale(1); filter: brightness(1) blur(0); }
+    }
+
+    .form-control-custom {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: #fff;
+        padding: 14px;
+        width: 100%;
+        transition: 0.3s ease;
+    }
+
+    .form-control-custom:focus {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 20px var(--primary-glow);
+        outline: none;
+    }
+
+    .btn-cyber {
+        background: linear-gradient(90deg, #00d4ff, #0052d4);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 800;
+        padding: 15px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        transition: 0.4s;
+    }
+
+    .btn-cyber:hover {
+        letter-spacing: 4px;
+        box-shadow: 0 0 30px #00d4ff;
+        transform: translateY(-2px);
+    }
+
+    .toggle-view {
+        position: absolute;
+        right: 15px;
+        top: 15px;
+        cursor: pointer;
+        color: #666;
+    }
+</style>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container d-flex align-items-center justify-content-center" style="min-height: 90vh;">
+    <div class="col-md-5 col-lg-4">
+        <div class="auth-card">
+            <div class="text-center mb-4">
+                <h1 class="fw-bold" style="background: linear-gradient(#fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Login</h1>
+                <p class="text-secondary small">Authorized Personnel Only</p>
+            </div>
+            
+            <form method="POST">
+                <div class="mb-3">
+                    <input type="text" name="username" class="form-control-custom" placeholder="Username" required>
+                </div>
+
+                <div class="mb-4 position-relative">
+                    <input type="password" id="loginPass" name="password" class="form-control-custom" placeholder="Password" required>
+                    <span class="toggle-view" onclick="togglePass('loginPass')">👁️</span>
+                </div>
+
+                <button type="submit" class="btn-cyber w-100">Initiate Login</button>
+            </form>
+
+            <div class="text-center mt-4">
+                <a href="{{ url_for('register') }}" class="text-decoration-none small" style="color: var(--accent-color); opacity: 0.7;">Create New Identity</a>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    function togglePass(id) {
+        const input = document.getElementById(id);
+        input.type = input.type === "password" ? "text" : "password";
+    }
+
+    // --- Neural Network Particle Logic ---
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        particles = [];
+        for(let i=0; i<100; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5
+            });
+        }
+    }
+
+    function animate() {
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(0, 212, 255, 0.5)";
+        ctx.strokeStyle = "rgba(0, 212, 255, 0.05)";
+        
+        particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
+            if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
+            
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 2, 0, Math.PI*2);
+            ctx.fill();
+
+            particles.forEach(p2 => {
+                let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                if(dist < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            });
+        });
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', init);
+    init(); animate();
+</script>
 {% endblock %}

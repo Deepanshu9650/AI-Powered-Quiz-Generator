@@ -1,36 +1,219 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-5">
-        <div class="card shadow">
-            <div class="card-body p-4">
-                <h2 class="text-center mb-4">Create Account</h2>
-                
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
+<style>
+    :root {
+        --reg-accent: #00ffaa;
+        --reg-glow: rgba(0, 255, 170, 0.4);
+    }
 
-                <form method="POST">
-                    <div class="mb-3">
-                        <label>Username</label>
-                        <input type="text" name="username" class="form-control" required>
+    body {
+        background-color: #050505;
+        color: #fff;
+        overflow: hidden; /* Prevents scrollbars during particle animation */
+        margin: 0;
+    }
+
+    /* Particle Canvas Background */
+    #particle-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1; /* Sits behind the card */
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        animation: slideUpFade 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUpFade {
+        from { opacity: 0; transform: translateY(50px); filter: blur(10px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+
+    .form-control-custom {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: #fff;
+        padding: 14px;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-custom:focus {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--reg-accent);
+        box-shadow: 0 0 20px var(--reg-glow);
+        outline: none;
+    }
+
+    .btn-reg {
+        background: linear-gradient(45deg, #00b09b, #96c93d);
+        border: none;
+        border-radius: 12px;
+        color: #000; /* Dark text for contrast against bright gradient */
+        font-weight: 800;
+        padding: 15px;
+        margin-top: 20px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-reg:hover {
+        letter-spacing: 3px;
+        transform: translateY(-3px);
+        box-shadow: 0 0 30px var(--reg-glow);
+    }
+
+    .label-custom {
+        color: #888;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 8px;
+        display: block;
+        margin-left: 5px;
+    }
+
+    .password-container { position: relative; }
+    
+    .peek-icon {
+        position: absolute;
+        right: 15px;
+        top: 14px;
+        cursor: pointer;
+        opacity: 0.5;
+        font-size: 1.2rem;
+        transition: 0.3s;
+    }
+
+    .peek-icon:hover { opacity: 1; color: var(--reg-accent); }
+
+    /* Flash Message Styling */
+    .alert {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border-radius: 12px;
+    }
+</style>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container d-flex align-items-center justify-content-center" style="min-height: 90vh;">
+    <div class="col-md-5 col-lg-4">
+        <div class="auth-card">
+            <h2 class="text-center fw-bold mb-4" style="background: linear-gradient(to right, #fff, #00ffaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Initialize Account</h2>
+            
+            {# Flash Messages #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} fade show small py-2">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="label-custom">Username</label>
+                    <input type="text" name="username" class="form-control-custom" placeholder="Pick a name" required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="label-custom">Security Code</label>
+                    <div class="password-container">
+                        <input type="password" id="regPass" name="password" class="form-control-custom" placeholder="••••••••" required>
+                        <span class="peek-icon" onclick="toggleView('regPass')">👁️</span>
                     </div>
-                    <div class="mb-3">
-                        <label>Password</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">Sign Up & Login</button>
-                </form>
-                <p class="text-center mt-3">
-                    Already have an account? <a href="{{ url_for('login') }}">Login</a>
+                </div>
+
+                <button type="submit" class="btn btn-reg w-100">JOIN THE NETWORK</button>
+            </form>
+
+            <div class="text-center mt-4">
+                <p class="text-muted small">Already a member? 
+                    <a href="{{ url_for('login') }}" class="text-decoration-none fw-bold text-white" style="border-bottom: 1px solid var(--reg-accent);">Access Portal</a>
                 </p>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Password Toggle Function
+    function toggleView(id) {
+        const p = document.getElementById(id);
+        p.type = p.type === 'password' ? 'text' : 'password';
+    }
+
+    // --- Neural Network Particle Background Logic ---
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    const particleCount = 80;
+    const connectionDistance = 120;
+
+    function init() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        particles = [];
+        for(let i=0; i < particleCount; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.6,
+                vy: (Math.random() - 0.5) * 0.6,
+                radius: Math.random() * 2 + 1
+            });
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(0, 255, 170, 0.4)";
+        ctx.strokeStyle = "rgba(0, 255, 170, 0.08)";
+        
+        particles.forEach((p, index) => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Bounce off edges
+            if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
+            if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
+            
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Connect nearby particles
+            for(let j = index + 1; j < particles.length; j++) {
+                const p2 = particles[j];
+                const dist = Math.sqrt((p.x - p2.x)**2 + (p.y - p2.y)**2);
+                if(dist < connectionDistance) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        });
+        requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    draw();
+</script>
 {% endblock %}
