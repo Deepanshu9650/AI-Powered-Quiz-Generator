@@ -11,10 +11,7 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 import google.generativeai as genai
 from dotenv import load_dotenv
-# [ADDED] YouTube Library
 from youtube_transcript_api import YouTubeTranscriptApi
-
-# PDF Gen
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -113,7 +110,6 @@ def check_achievements(user, result):
         db.session.add(new_badge)
         badges_earned.append("Dedicated")
     
-    # [ADDED] YouTube Achievement
     if "YouTube" in result.topic and "Video Learner" not in existing_badges:
         new_badge = Achievement(user_id=user.id, name="Video Learner", description="Generated a quiz from a YouTube video", icon="fa-video")
         db.session.add(new_badge)
@@ -155,10 +151,8 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         return ""
 
-# [ADDED] Smarter YouTube Extractor (Handles Auto-Gen Captions)
 def extract_text_from_youtube(video_url):
     try:
-        # 1. robustly extract video ID
         video_id = ""
         if "v=" in video_url:
             video_id = video_url.split("v=")[1].split("&")[0]
@@ -169,18 +163,13 @@ def extract_text_from_youtube(video_url):
         
         if not video_id: return None
 
-        # 2. Try to fetch transcript (Manual OR Auto-generated)
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-            
-            # Find the first available transcript (English first, then any)
             try:
                 transcript = transcript_list.find_transcript(['en', 'en-US'])
             except:
-                # If no English, take the first available one (even auto-generated)
                 transcript = next(iter(transcript_list))
                 
-            # 3. Actually fetch the text
             full_transcript = transcript.fetch()
             full_text = " ".join([t['text'] for t in full_transcript])
             return full_text
@@ -193,9 +182,23 @@ def extract_text_from_youtube(video_url):
         print(f"URL Parsing Error: {e}")
         return None
 
-def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="Medium", q_type="MCQ"):
+# [NEW] Generate Study Guide Function
+def generate_study_guide(topic=None, source_text=None):
+    if source_text:
+        context = f"Source Text: {source_text[:50000]}"
+        prompt = f"Create a comprehensive, easy-to-understand study guide and theory overview based on the following text.\n\n{context}\n\nFormat the output using Markdown with clear headings, bullet points, and bold text for key terms. Do not ask questions, just provide the educational material."
+    else:
+        context = f"Topic: {topic}"
+        prompt = f"Create a comprehensive, easy-to-understand study guide and theory overview for the following topic: {context}.\n\nFormat the output using Markdown with clear headings, bullet points, and bold text for key terms. Do not ask questions, just provide the educational material."
     
-    # Define Schema based on type
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"-------- GEMINI ERROR --------\n{e}\n------------------------------")
+        return "### Error\nCould not generate study guide. Please try again later."
+
+def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="Medium", q_type="MCQ"):
     if q_type == "MCQ":
         json_structure = """[{"question": "...", "options": ["A", "B", "C", "D"], "correct_answer": "Option A", "explanation": "..."}]"""
         type_prompt = "multiple-choice questions"
@@ -259,7 +262,7 @@ def login():
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard')) # Redirect to dashboard instead of index
         flash('Invalid credentials.', 'danger')
     return render_template('login.html')
 
@@ -267,13 +270,21 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
+# [UPDATED] Landing Page Route
 @app.route('/')
-@login_required 
 def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('index.html')
+
+# [NEW] Dashboard Route
+@app.route('/dashboard')
+@login_required 
+def dashboard():
     history = QuizResult.query.filter_by(user_id=current_user.id).order_by(QuizResult.date_taken.desc()).all()
-    return render_template('index.html', user=current_user, history=history)
+    return render_template('dashboard.html', user=current_user, history=history)
 
 @app.route('/leaderboard')
 @login_required
@@ -299,11 +310,9 @@ def profile(username=None):
         
     return render_template('profile.html', user=user_obj, history=history, activity_json=json.dumps(activity_data))
 
-# MISTAKE NOTEBOOK ROUTE
 @app.route('/mistakes')
 @login_required
 def mistakes():
-    # Fetch all quizzes where score < total questions (meaning they made a mistake)
     imperfect_quizzes = QuizResult.query.filter(
         QuizResult.user_id == current_user.id, 
         QuizResult.score < QuizResult.total_questions
@@ -315,7 +324,6 @@ def mistakes():
         try:
             details = json.loads(quiz.details)
             for q in details:
-                # If the question was answered incorrectly
                 if not q.get('is_correct'):
                     mistake_list.append({
                         'question': q.get('question'),
@@ -336,7 +344,7 @@ def review_quiz(result_id):
     result = QuizResult.query.get_or_404(result_id)
     if result.user_id != current_user.id:
         flash("You are not authorized to view this result.", "danger")
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
     try:
         results_data = json.loads(result.details) if result.details else []
     except:
@@ -372,18 +380,40 @@ def download_result(result_id):
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name=f"Result_{result_id}.pdf", mimetype='application/pdf')
 
+# [NEW] Download Study Guide Route
+@app.route('/download_guide', methods=['POST'])
+@login_required
+def download_guide():
+    topic = request.form.get('topic', 'Study_Guide')
+    material = request.form.get('material', '')
+    
+    # Create a safe filename (remove weird characters)
+    safe_topic = "".join([c for c in topic if c.isalpha() or c.isdigit() or c==' ']).rstrip().replace(' ', '_')
+    if not safe_topic: safe_topic = "Study_Guide"
+    filename = f"{safe_topic}_Notes.md"
+    
+    # Create the text file in memory and send it
+    buffer = io.BytesIO()
+    buffer.write(material.encode('utf-8'))
+    buffer.seek(0)
+    
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='text/markdown')
+
+# [UPDATED] Generate Route handles the Learn First logic and passing raw_material
 @app.route('/generate_quiz', methods=['POST'])
 @login_required
 def generate_quiz():
     q_limit = int(request.form.get('question_limit', 5))
     difficulty = request.form.get('difficulty', 'Medium')
     q_type = request.form.get('q_type', 'MCQ')
+    learn_first = request.form.get('learn_first') # Intercept the toggle
     
     session['current_difficulty'] = difficulty
     session['q_type'] = q_type 
     session['duration'] = int(request.form.get('duration', 60))
 
     quiz_json_text = None
+    study_material = None
     
     # CASE 1: PDF Upload
     if 'pdf_file' in request.files and request.files['pdf_file'].filename != '':
@@ -391,26 +421,39 @@ def generate_quiz():
         pdf_text = extract_text_from_pdf(file)
         if pdf_text:
             session['last_topic'] = f"PDF: {file.filename}"
-            quiz_json_text = generate_quiz_questions(source_text=pdf_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
+            if learn_first == 'true':
+                study_material = generate_study_guide(source_text=pdf_text)
+            else:
+                quiz_json_text = generate_quiz_questions(source_text=pdf_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
     
     # CASE 2: Text Input (Topic or YouTube URL)
     elif 'topic' in request.form:
         raw_input = request.form['topic']
         
-        # [ADDED] Check if it's a YouTube Link
         if "youtube.com" in raw_input or "youtu.be" in raw_input or "shorts" in raw_input:
             youtube_text = extract_text_from_youtube(raw_input)
             if youtube_text:
                 session['last_topic'] = f"YouTube Video Quiz"
-                quiz_json_text = generate_quiz_questions(source_text=youtube_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
+                if learn_first == 'true':
+                    study_material = generate_study_guide(source_text=youtube_text)
+                else:
+                    quiz_json_text = generate_quiz_questions(source_text=youtube_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
             else:
                 flash("Could not retrieve captions from this YouTube video. Try another one with subtitles!", "danger")
-                return redirect(url_for('index'))
+                return redirect(url_for('dashboard'))
         else:
             session['last_topic'] = raw_input
-            quiz_json_text = generate_quiz_questions(topic=raw_input, qcount=q_limit, difficulty=difficulty, q_type=q_type)
+            if learn_first == 'true':
+                study_material = generate_study_guide(topic=raw_input)
+            else:
+                quiz_json_text = generate_quiz_questions(topic=raw_input, qcount=q_limit, difficulty=difficulty, q_type=q_type)
 
-    if not quiz_json_text: return redirect(url_for('index'))
+    # If user selected Learn First, format the markdown and send them to the study guide page
+    if learn_first == 'true' and study_material:
+        formatted_material = markdown.markdown(study_material)
+        return render_template('study_guide.html', material=formatted_material, raw_material=study_material, topic=session.get('last_topic', 'Study Topic'))
+
+    if not quiz_json_text: return redirect(url_for('dashboard'))
 
     try:
         questions_data = json.loads(quiz_json_text)
@@ -422,14 +465,15 @@ def generate_quiz():
         
         if q_type == 'Flashcard': return redirect(url_for('flashcards'))
         return redirect(url_for('quiz'))
-    except:
-        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"Error parsing questions: {e}")
+        return redirect(url_for('dashboard'))
 
 @app.route('/flashcards')
 @login_required
 def flashcards():
     questions = Question.query.all()
-    if not questions: return redirect(url_for('index'))
+    if not questions: return redirect(url_for('dashboard'))
     return render_template('flashcards.html', cards=questions)
 
 @app.route('/quiz')
@@ -487,7 +531,7 @@ def submit():
     return render_template('result.html', score=score, total=len(questions), results=results, q_type=q_type)
 
 @app.route('/quit')
-def quit_quiz(): return redirect(url_for('index'))
+def quit_quiz(): return redirect(url_for('dashboard'))
 
 @app.template_filter('markdown')
 def markdown_filter(text): return markdown.markdown(text or "")

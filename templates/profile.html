@@ -95,11 +95,11 @@
     .legend-box { width: 13px; height: 13px; border-radius: 3px; }
 </style>
 
-<div class="container py-5">
+<div class="container py-5 flex-grow-1">
     
     <div class="row mb-5">
         <div class="col-md-4 mb-4">
-            <div class="card shadow-lg border-0 h-100 text-center py-5">
+            <div class="card shadow-lg border-0 h-100 text-center py-5 container-box">
                 <div class="card-body">
                     <div class="mb-4">
                         <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=0d6efd&color=fff&size=128&bold=true" 
@@ -110,7 +110,7 @@
                     
                     {% if user.id == current_user.id %}
                     <div class="mt-4">
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-primary rounded-pill px-4 fw-bold">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary rounded-pill px-4 fw-bold">
                             <i class="fas fa-plus me-1"></i> New Quiz
                         </a>
                     </div>
@@ -120,7 +120,7 @@
         </div>
 
         <div class="col-md-8 mb-4">
-            <div class="card shadow-lg border-0 h-100">
+            <div class="card shadow-lg border-0 h-100 container-box">
                 <div class="card-body d-flex flex-column justify-content-center p-4">
                     
                     <div class="row text-center mb-4">
@@ -195,9 +195,70 @@
         </div>
     </div>
 
-    <div class="card shadow-lg border-0">
-        <div class="card-header bg-white pt-4 pb-2 border-bottom-0">
-            <h5 class="fw-bold text-primary">
+    <div class="card shadow-sm border-0 container-box mt-4 mb-5">
+        <div class="card-body p-4 p-md-5">
+            <h4 class="fw-bold mb-4">
+                <i class="fas fa-trophy me-2" style="color: var(--accent-color);"></i>How to Earn Badges
+            </h4>
+            
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
+                        <div class="fs-1 me-3 text-warning"><i class="fas fa-shoe-prints"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-1">First Steps</h6>
+                            <small class="text-muted" style="font-size: 0.85rem;">Complete your very first quiz on the platform.</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-4">
+                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
+                        <div class="fs-1 me-3 text-danger"><i class="fas fa-crosshairs"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-1">Sniper</h6>
+                            <small class="text-muted" style="font-size: 0.85rem;">Score 100% on a quiz that has at least 5 questions.</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-4">
+                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
+                        <div class="fs-1 me-3" style="color: #f97316;"><i class="fas fa-fire"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-1">On Fire</h6>
+                            <small class="text-muted" style="font-size: 0.85rem;">Reach a 3-day active learning streak.</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-6">
+                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
+                        <div class="fs-1 me-3 text-warning"><i class="fas fa-dumbbell"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-1">Dedicated</h6>
+                            <small class="text-muted" style="font-size: 0.85rem;">Complete a total of 10 quizzes to prove your dedication.</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-6">
+                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
+                        <div class="fs-1 me-3 text-danger"><i class="fas fa-video"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-1">Video Learner</h6>
+                            <small class="text-muted" style="font-size: 0.85rem;">Generate a custom AI quiz from a YouTube video URL.</small>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-lg border-0 container-box">
+        <div class="card-header bg-transparent pt-4 pb-2 border-bottom-0">
+            <h5 class="fw-bold" style="color: var(--accent-color);">
                 <i class="fas fa-history me-2"></i> Recent Submission History
             </h5>
         </div>
@@ -263,7 +324,7 @@
                 
                 {% if user.id == current_user.id %}
                     <p class="text-muted mb-4">Complete your first quiz to light up the graph!</p>
-                    <a href="{{ url_for('index') }}" class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm">
                         Start New Quiz
                     </a>
                 {% else %}
