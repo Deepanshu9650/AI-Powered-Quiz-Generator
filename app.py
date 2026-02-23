@@ -1,25 +1,36 @@
 import os
 import json
-import PyPDF2 
-import markdown
 import io
-import re
-from datetime import datetime, date, timedelta
+import markdown
+from datetime import datetime, date
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import google.generativeai as genai
 from dotenv import load_dotenv
-from youtube_transcript_api import YouTubeTranscriptApi
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+
+# --- IMPORT HELPER FUNCTIONS FROM UTILS.PY ---
+from utils import (
+    extract_text_from_pdf, 
+    extract_text_from_youtube, 
+    generate_study_guide, 
+    generate_quiz_questions, 
+    grade_answers_with_ai
+)
+
+# --- IMPORT NEW ROUTE FILES (BLUEPRINTS) ---
+from future_routes import new_features_bp
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "super_secret_key_change_me")
+
+# Register the Blueprint so Flask knows about your extra .py files
+app.register_blueprint(new_features_bp)
 
 # --- DATABASE CONFIGURATION ---
 database_url = os.environ.get('DATABASE_URL')
@@ -37,23 +48,17 @@ login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
-
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash') 
+    # Using the modern db.session.get to fix the legacy warning
+    return db.session.get(User, int(user_id))
 
 # ------------------ DATABASE MODELS ------------------
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
-    
     current_streak = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
     last_quiz_date = db.Column(db.Date, nullable=True) 
-    
     history = db.relationship('QuizResult', backref='student', lazy=True)
     achievements = db.relationship('Achievement', backref='owner', lazy=True)
 
@@ -83,8 +88,7 @@ class QuizResult(db.Model):
     date_taken = db.Column(db.DateTime, default=datetime.utcnow)
     details = db.Column(db.Text, nullable=True)
 
-# ------------------ HELPER FUNCTIONS ------------------
-
+# ------------------ DATABASE HELPER FUNCTIONS ------------------
 def check_achievements(user, result):
     badges_earned = []
     existing_badges = [a.name for a in user.achievements]
@@ -140,107 +144,7 @@ def update_user_streak(user):
     user.last_quiz_date = today
     db.session.commit()
 
-def extract_text_from_pdf(pdf_file):
-    try:
-        reader = PyPDF2.PdfReader(pdf_file)
-        text = ""
-        for i, page in enumerate(reader.pages):
-            if i >= 10: break 
-            text += page.extract_text() + "\n"
-        return text
-    except Exception as e:
-        return ""
-
-def extract_text_from_youtube(video_url):
-    try:
-        video_id = ""
-        if "v=" in video_url:
-            video_id = video_url.split("v=")[1].split("&")[0]
-        elif "youtu.be/" in video_url:
-            video_id = video_url.split("youtu.be/")[1].split("?")[0]
-        elif "shorts/" in video_url:
-             video_id = video_url.split("shorts/")[1].split("?")[0]
-        
-        if not video_id: return None
-
-        try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-            try:
-                transcript = transcript_list.find_transcript(['en', 'en-US'])
-            except:
-                transcript = next(iter(transcript_list))
-                
-            full_transcript = transcript.fetch()
-            full_text = " ".join([t['text'] for t in full_transcript])
-            return full_text
-            
-        except Exception as e:
-            print(f"Transcript Fetch Error: {e}")
-            return None
-            
-    except Exception as e:
-        print(f"URL Parsing Error: {e}")
-        return None
-
-# [NEW] Generate Study Guide Function
-def generate_study_guide(topic=None, source_text=None):
-    if source_text:
-        context = f"Source Text: {source_text[:50000]}"
-        prompt = f"Create a comprehensive, easy-to-understand study guide and theory overview based on the following text.\n\n{context}\n\nFormat the output using Markdown with clear headings, bullet points, and bold text for key terms. Do not ask questions, just provide the educational material."
-    else:
-        context = f"Topic: {topic}"
-        prompt = f"Create a comprehensive, easy-to-understand study guide and theory overview for the following topic: {context}.\n\nFormat the output using Markdown with clear headings, bullet points, and bold text for key terms. Do not ask questions, just provide the educational material."
-    
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        print(f"-------- GEMINI ERROR --------\n{e}\n------------------------------")
-        return "### Error\nCould not generate study guide. Please try again later."
-
-def generate_quiz_questions(topic=None, source_text=None, qcount=5, difficulty="Medium", q_type="MCQ"):
-    if q_type == "MCQ":
-        json_structure = """[{"question": "...", "options": ["A", "B", "C", "D"], "correct_answer": "Option A", "explanation": "..."}]"""
-        type_prompt = "multiple-choice questions"
-    elif q_type == "Theory":
-        json_structure = """[{"question": "Explain...", "options": [], "correct_answer": "Key points...", "explanation": "..."}]"""
-        type_prompt = "short-answer theory questions"
-    elif q_type == "Code":
-        json_structure = """[{"question": "Write python code...", "options": [], "correct_answer": "def solution():...", "explanation": "..."}]"""
-        type_prompt = "coding challenges"
-    elif q_type == "Flashcard":
-        json_structure = """[{"question": "Concept/Term", "options": [], "correct_answer": "Definition/Answer", "explanation": "..."}]"""
-        type_prompt = "flashcards (Concept on front, Definition on back)"
-    elif q_type == "Interview":
-        json_structure = """[{"question": "Interviewer: ...", "options": [], "correct_answer": "Ideal Candidate Answer: ...", "explanation": "Key concepts to mention..."}]"""
-        type_prompt = "behavioral or technical interview questions. Write questions as if an interviewer is asking them."
-
-    context = f"Topic: {topic}" if topic else f"Source Text: {source_text[:50000]}"
-    
-    prompt = (
-        f"Generate {qcount} {type_prompt} based on:\n{context}\n"
-        f"Difficulty: {difficulty}.\n"
-        f"Return ONLY valid JSON matching this structure:\n{json_structure}"
-    )
-
-    try:
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-        return response.text.strip()
-    except Exception as e:
-        print(f"-------- GEMINI ERROR --------\n{e}\n------------------------------")
-        return None
-
-def grade_answers_with_ai(qa_pairs):
-    prompt = "Grade these answers. Return JSON list: [{'is_correct': true/false, 'feedback': '...'}, ...]\n"
-    for i, item in enumerate(qa_pairs):
-        prompt += f"Q: {item['question']}\nCorrect: {item['correct_key']}\nStudent: {item['user_answer']}\n---\n"
-    try:
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-        return json.loads(response.text)
-    except:
-        return [{"is_correct": False, "feedback": "Error"}] * len(qa_pairs)
-
-# ------------------ ROUTES ------------------
+# ------------------ CORE ROUTES ------------------
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -262,7 +166,7 @@ def login():
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
-            return redirect(url_for('dashboard')) # Redirect to dashboard instead of index
+            return redirect(url_for('dashboard')) 
         flash('Invalid credentials.', 'danger')
     return render_template('login.html')
 
@@ -272,14 +176,12 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-# [UPDATED] Landing Page Route
 @app.route('/')
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
-# [NEW] Dashboard Route
 @app.route('/dashboard')
 @login_required 
 def dashboard():
@@ -380,33 +282,67 @@ def download_result(result_id):
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name=f"Result_{result_id}.pdf", mimetype='application/pdf')
 
-# [NEW] Download Study Guide Route
 @app.route('/download_guide', methods=['POST'])
 @login_required
 def download_guide():
     topic = request.form.get('topic', 'Study_Guide')
     material = request.form.get('material', '')
     
-    # Create a safe filename (remove weird characters)
+    # Generate filename with .pdf extension
     safe_topic = "".join([c for c in topic if c.isalpha() or c.isdigit() or c==' ']).rstrip().replace(' ', '_')
     if not safe_topic: safe_topic = "Study_Guide"
-    filename = f"{safe_topic}_Notes.md"
-    
-    # Create the text file in memory and send it
+    filename = f"{safe_topic}_Notes.pdf"
+
+    # Set up the PDF Buffer and Document using ReportLab
     buffer = io.BytesIO()
-    buffer.write(material.encode('utf-8'))
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    
+    elements = []
+    
+    # Title Section
+    elements.append(Paragraph(f"Study Guide: {topic}", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+    # Convert Markdown to HTML, then strip/process for ReportLab
+    lines = material.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line:
+            elements.append(Spacer(1, 6))
+            continue
+        
+        # CORRECT WAY: Use regex to properly replace **text** with <b>text</b>
+        import re
+        formatted_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+        
+        # Handle simple Markdown conversion for PDF
+        if formatted_line.startswith('# '):
+            elements.append(Paragraph(formatted_line[2:], styles['Title']))
+        elif formatted_line.startswith('## '):
+            elements.append(Paragraph(formatted_line[3:], styles['Heading1']))
+        elif formatted_line.startswith('### '):
+            elements.append(Paragraph(formatted_line[4:], styles['Heading2']))
+        elif formatted_line.startswith('* ') or formatted_line.startswith('- '):
+            # Bullet point simulation
+            elements.append(Paragraph(f"• {formatted_line[2:]}", styles['Normal']))
+        else:
+            # Normal text
+            elements.append(Paragraph(formatted_line, styles['Normal']))
+            elements.append(Spacer(1, 4))
+
+    doc.build(elements)
     buffer.seek(0)
     
-    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='text/markdown')
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
-# [UPDATED] Generate Route handles the Learn First logic and passing raw_material
 @app.route('/generate_quiz', methods=['POST'])
 @login_required
 def generate_quiz():
     q_limit = int(request.form.get('question_limit', 5))
     difficulty = request.form.get('difficulty', 'Medium')
     q_type = request.form.get('q_type', 'MCQ')
-    learn_first = request.form.get('learn_first') # Intercept the toggle
+    learn_first = request.form.get('learn_first') 
     
     session['current_difficulty'] = difficulty
     session['q_type'] = q_type 
@@ -415,7 +351,6 @@ def generate_quiz():
     quiz_json_text = None
     study_material = None
     
-    # CASE 1: PDF Upload
     if 'pdf_file' in request.files and request.files['pdf_file'].filename != '':
         file = request.files['pdf_file']
         pdf_text = extract_text_from_pdf(file)
@@ -426,7 +361,6 @@ def generate_quiz():
             else:
                 quiz_json_text = generate_quiz_questions(source_text=pdf_text, qcount=q_limit, difficulty=difficulty, q_type=q_type)
     
-    # CASE 2: Text Input (Topic or YouTube URL)
     elif 'topic' in request.form:
         raw_input = request.form['topic']
         
@@ -448,7 +382,6 @@ def generate_quiz():
             else:
                 quiz_json_text = generate_quiz_questions(topic=raw_input, qcount=q_limit, difficulty=difficulty, q_type=q_type)
 
-    # If user selected Learn First, format the markdown and send them to the study guide page
     if learn_first == 'true' and study_material:
         formatted_material = markdown.markdown(study_material)
         return render_template('study_guide.html', material=formatted_material, raw_material=study_material, topic=session.get('last_topic', 'Study Topic'))

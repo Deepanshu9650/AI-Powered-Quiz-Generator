@@ -16,9 +16,9 @@
                     <h5 class="mb-0 fw-bold text-secondary"><i class="fas fa-medal me-2"></i>Current Standings</h5>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
                         <table class="table table-hover mb-0 align-middle">
-                            <thead class="bg-light text-uppercase small fw-bold text-muted">
+                            <thead class="bg-light text-uppercase small fw-bold text-muted sticky-top" style="z-index: 1;">
                                 <tr>
                                     <th class="ps-4 py-3" style="width: 80px;">Rank</th>
                                     <th>User</th>
@@ -42,7 +42,7 @@
                                     </td>
 
                                     <td>
-                                        <div class="d-flex align-items-center">
+                                        <a href="{{ url_for('profile', username=leader.username) }}" class="text-decoration-none text-dark d-flex align-items-center profile-link">
                                             <img src="https://ui-avatars.com/api/?name={{ leader.username }}&background=random&size=40&bold=true" 
                                                  class="rounded-circle me-3 shadow-sm" width="40" height="40">
                                             
@@ -55,7 +55,7 @@
                                                     {% endif %}
                                                 </h6>
                                             </div>
-                                        </div>
+                                        </a>
                                     </td>
 
                                     <td class="text-end pe-4">
@@ -87,4 +87,25 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Thin, sleek scrollbar for the table */
+    .table-responsive::-webkit-scrollbar {
+        width: 6px;
+    }
+    .table-responsive::-webkit-scrollbar-track {
+        background: transparent; 
+    }
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #ced4da; 
+        border-radius: 4px;
+    }
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #adb5bd; 
+    }
+    /* Add slight hover effect to the profile link */
+    .profile-link:hover h6 {
+        text-decoration: underline;
+    }
+</style>
 {% endblock %}

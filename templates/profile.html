@@ -93,6 +93,28 @@
         margin-top: 15px;
     }
     .legend-box { width: 13px; height: 13px; border-radius: 3px; }
+
+    /* --- NEW QUIZ HISTORY TABLE STYLES --- */
+    .table-responsive::-webkit-scrollbar {
+        width: 6px;
+    }
+    .table-responsive::-webkit-scrollbar-track {
+        background: transparent; 
+    }
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #ced4da; 
+        border-radius: 4px;
+    }
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #adb5bd; 
+    }
+    .dropdown-icon {
+        transition: transform 0.3s ease;
+    }
+    tr[aria-expanded="true"] .dropdown-icon {
+        transform: rotate(180deg);
+        color: #0d6efd; /* Primary blue */
+    }
 </style>
 
 <div class="container py-5 flex-grow-1">
@@ -195,67 +217,6 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 container-box mt-4 mb-5">
-        <div class="card-body p-4 p-md-5">
-            <h4 class="fw-bold mb-4">
-                <i class="fas fa-trophy me-2" style="color: var(--accent-color);"></i>How to Earn Badges
-            </h4>
-            
-            <div class="row g-4">
-                <div class="col-md-6 col-lg-4">
-                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
-                        <div class="fs-1 me-3 text-warning"><i class="fas fa-shoe-prints"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-1">First Steps</h6>
-                            <small class="text-muted" style="font-size: 0.85rem;">Complete your very first quiz on the platform.</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 col-lg-4">
-                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
-                        <div class="fs-1 me-3 text-danger"><i class="fas fa-crosshairs"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-1">Sniper</h6>
-                            <small class="text-muted" style="font-size: 0.85rem;">Score 100% on a quiz that has at least 5 questions.</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 col-lg-4">
-                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
-                        <div class="fs-1 me-3" style="color: #f97316;"><i class="fas fa-fire"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-1">On Fire</h6>
-                            <small class="text-muted" style="font-size: 0.85rem;">Reach a 3-day active learning streak.</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 col-lg-6">
-                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
-                        <div class="fs-1 me-3 text-warning"><i class="fas fa-dumbbell"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-1">Dedicated</h6>
-                            <small class="text-muted" style="font-size: 0.85rem;">Complete a total of 10 quizzes to prove your dedication.</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 col-lg-6">
-                    <div class="d-flex align-items-center p-3 border rounded-3 shadow-sm h-100" style="background-color: var(--bg-color); border-color: var(--border-color) !important;">
-                        <div class="fs-1 me-3 text-danger"><i class="fas fa-video"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-1">Video Learner</h6>
-                            <small class="text-muted" style="font-size: 0.85rem;">Generate a custom AI quiz from a YouTube video URL.</small>
-                        </div>
-                    </div>
-                </div>
-                
-            </div>
-        </div>
-    </div>
-
     <div class="card shadow-lg border-0 container-box">
         <div class="card-header bg-transparent pt-4 pb-2 border-bottom-0">
             <h5 class="fw-bold" style="color: var(--accent-color);">
@@ -264,51 +225,86 @@
         </div>
         <div class="card-body p-0">
             {% if history %}
-            <div class="table-responsive">
-                <table class="table table-hover table-striped mb-0 align-middle">
-                    <thead class="bg-light text-uppercase small fw-bold text-muted">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+                <table class="table table-hover mb-0 align-middle" style="border-collapse: collapse;">
+                    <thead class="bg-light sticky-top" style="z-index: 1;">
                         <tr>
-                            <th class="ps-4 py-3">Date</th>
+                            <th class="ps-4 py-3" style="width: 50px;">#</th>
                             <th>Topic</th>
-                            <th>Difficulty</th>
                             <th>Score</th>
-                            <th class="text-end pe-4">Result</th>
+                            <th class="text-end pe-4"></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for result in history %}
-                        <tr>
-                            <td class="ps-4 text-muted font-monospace">
-                                {{ result.date_taken.strftime('%Y-%m-%d') }}
-                            </td>
-                            <td class="fw-bold text-dark">{{ result.topic }}</td>
-                            <td>
+                        <tr style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#profile-details-{{ result.id }}" aria-expanded="false">
+                            <td class="ps-4 fw-bold text-muted">{{ loop.index }}</td>
+                            <td class="fw-bold text-dark text-truncate" style="max-width: 180px;">
+                                {% if "YouTube" in result.topic %}
+                                    <i class="fab fa-youtube text-danger me-2"></i>
+                                {% elif "PDF" in result.topic %}
+                                    <i class="fas fa-file-pdf text-warning me-2"></i>
+                                {% else %}
+                                    <i class="fas fa-lightbulb text-info me-2"></i>
+                                {% endif %}
+                                {{ result.topic }}
+                                
                                 {% if result.difficulty == 'Easy' %}
-                                    <span class="badge bg-success bg-opacity-10 text-success">Easy</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success border ms-2" style="font-size: 0.7em;">Easy</span>
                                 {% elif result.difficulty == 'Medium' %}
-                                    <span class="badge bg-warning bg-opacity-10 text-warning">Medium</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border ms-2" style="font-size: 0.7em;">Medium</span>
                                 {% else %}
-                                    <span class="badge bg-danger bg-opacity-10 text-danger">Hard</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border ms-2" style="font-size: 0.7em;">Hard</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <strong>{{ result.score }}</strong> <span class="text-muted small">/ {{ result.total_questions }}</span>
+                                <span class="badge rounded-pill bg-{{ 'success' if result.score/result.total_questions >= 0.7 else 'secondary' }}">
+                                    {{ result.score }} / {{ result.total_questions }}
+                                </span>
                             </td>
-                            <td class="text-end pe-4">
-                                {% set percent = (result.score / result.total_questions) * 100 %}
-                                {% if percent >= 60 %}
-                                    <span class="text-success fw-bold me-3"><i class="fas fa-check"></i></span>
-                                {% else %}
-                                    <span class="text-danger fw-bold me-3"><i class="fas fa-times"></i></span>
-                                {% endif %}
+                            <td class="text-end pe-4 text-muted">
+                                <i class="fas fa-chevron-down dropdown-icon"></i>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <td colspan="4" class="p-0 border-0">
+                                <div class="collapse" id="profile-details-{{ result.id }}">
+                                    <div class="bg-light p-3 border-bottom text-start">
+                                        
+                                        <div class="mb-3">
+                                            <div class="fw-bold text-uppercase text-muted mb-1" style="font-size: 0.70rem;">Full Topic</div>
+                                            <div class="fw-bold text-dark" style="white-space: normal; word-wrap: break-word;">
+                                                {{ result.topic }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 border-top pt-3">
+                                            <div class="text-muted small">
+                                                <div class="fw-bold text-uppercase mb-1" style="font-size: 0.75rem;">Date Taken</div>
+                                                <i class="far fa-calendar-alt me-1"></i> <strong>{{ result.date_taken.strftime('%B %d, %Y') }}</strong>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% set percent = (result.score / result.total_questions) * 100 %}
+                                                {% if percent >= 60 %}
+                                                    <span class="text-success fw-bold me-3"><i class="fas fa-check-circle me-1"></i> Passed</span>
+                                                {% else %}
+                                                    <span class="text-danger fw-bold me-3"><i class="fas fa-times-circle me-1"></i> Failed</span>
+                                                {% endif %}
 
-                                {% if user.id == current_user.id %}
-                                    <a href="{{ url_for('download_result', result_id=result.id) }}" 
-                                       class="btn btn-sm btn-outline-secondary rounded-circle" 
-                                       title="Download Report">
-                                        <i class="fas fa-download"></i>
-                                    </a>
-                                {% endif %}
+                                                <a href="{{ url_for('review_quiz', result_id=result.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <i class="fas fa-eye me-1"></i> Preview
+                                                </a>
+                                                {% if user.id == current_user.id %}
+                                                <a href="{{ url_for('download_result', result_id=result.id) }}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                                                    <i class="fas fa-download me-1"></i> Download
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -334,7 +330,7 @@
             {% endif %}
         </div>
     </div>
-</div>
+    </div>
 
 <script>
     // 1. Data
