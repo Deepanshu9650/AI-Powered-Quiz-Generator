@@ -80,6 +80,13 @@
         cursor: pointer;
         color: #666;
     }
+    
+    .alert {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border-radius: 12px;
+    }
 </style>
 
 <canvas id="particle-canvas"></canvas>
@@ -92,6 +99,15 @@
                 <p class="text-secondary small">Authorized Personnel Only</p>
             </div>
             
+            {# Flash Messages ADDED HERE #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} fade show small py-2 mb-3">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
             <form method="POST">
                 <div class="mb-3">
                     <input type="text" name="username" class="form-control-custom" placeholder="Username" required>

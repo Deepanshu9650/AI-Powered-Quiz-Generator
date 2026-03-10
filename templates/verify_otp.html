@@ -10,18 +10,17 @@
     body {
         background-color: #050505;
         color: #fff;
-        overflow: hidden; /* Prevents scrollbars during particle animation */
+        overflow: hidden; 
         margin: 0;
     }
 
-    /* Particle Canvas Background */
     #particle-canvas {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: -1; /* Sits behind the card */
+        z-index: -1; 
     }
 
     .auth-card {
@@ -44,10 +43,19 @@
         background: rgba(255, 255, 255, 0.05);
         border: 2px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        color: #fff;
+        color: #00ffaa; /* Neon green text for the OTP */
         padding: 14px;
         width: 100%;
         transition: all 0.3s ease;
+        text-align: center;
+        font-size: 2rem;
+        letter-spacing: 12px;
+        font-weight: bold;
+    }
+
+    .form-control-custom::placeholder {
+        color: rgba(255, 255, 255, 0.2);
+        letter-spacing: 12px;
     }
 
     .form-control-custom:focus {
@@ -61,7 +69,7 @@
         background: linear-gradient(45deg, #00b09b, #96c93d);
         border: none;
         border-radius: 12px;
-        color: #000; /* Dark text for contrast against bright gradient */
+        color: #000; 
         font-weight: 800;
         padding: 15px;
         margin-top: 20px;
@@ -76,31 +84,6 @@
         box-shadow: 0 0 30px var(--reg-glow);
     }
 
-    .label-custom {
-        color: #888;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        margin-bottom: 8px;
-        display: block;
-        margin-left: 5px;
-    }
-
-    .password-container { position: relative; }
-    
-    .peek-icon {
-        position: absolute;
-        right: 15px;
-        top: 14px;
-        cursor: pointer;
-        opacity: 0.5;
-        font-size: 1.2rem;
-        transition: 0.3s;
-    }
-
-    .peek-icon:hover { opacity: 1; color: var(--reg-accent); }
-
-    /* Flash Message Styling */
     .alert {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -113,57 +96,36 @@
 
 <div class="container d-flex align-items-center justify-content-center" style="min-height: 90vh;">
     <div class="col-md-5 col-lg-4">
-        <div class="auth-card">
-            <h2 class="text-center fw-bold mb-4" style="background: linear-gradient(to right, #fff, #00ffaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Initialize Account</h2>
+        <div class="auth-card text-center">
+            <h2 class="fw-bold mb-3" style="background: linear-gradient(to right, #fff, #00ffaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                {{ title }}
+            </h2>
             
+            <p class="text-muted small mb-4">
+                We've sent a 6-digit security code to your email. Enter it below to grant access.
+            </p>
+
             {# Flash Messages #}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} fade show small py-2">{{ message }}</div>
+                        <div class="alert alert-{{ category }} fade show small py-2 mb-4">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
 
             <form method="POST">
-                <div class="mb-3">
-                    <label class="label-custom">Username</label>
-                    <input type="text" name="username" class="form-control-custom" placeholder="Pick a name" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="label-custom">Email Address</label>
-                    <input type="email" name="email" class="form-control-custom" placeholder="you@domain.com" required>
-                    <small style="color: #666; margin-left: 5px; font-size: 0.7rem;">Used for OTP & sending reports.</small>
-                </div>
-
                 <div class="mb-4">
-                    <label class="label-custom">Security Code</label>
-                    <div class="password-container">
-                        <input type="password" id="regPass" name="password" class="form-control-custom" placeholder="••••••••" required>
-                        <span class="peek-icon" onclick="toggleView('regPass')">👁️</span>
-                    </div>
+                    <input type="text" id="otp" name="otp" class="form-control-custom" placeholder="------" required maxlength="6" pattern="\d{6}" autocomplete="off">
                 </div>
 
-                <button type="submit" class="btn btn-reg w-100">JOIN THE NETWORK</button>
+                <button type="submit" class="btn btn-reg w-100">AUTHENTICATE</button>
             </form>
-
-            <div class="text-center mt-4">
-                <p class="text-muted small">Already a member? 
-                    <a href="{{ url_for('login') }}" class="text-decoration-none fw-bold text-white" style="border-bottom: 1px solid var(--reg-accent);">Access Portal</a>
-                </p>
-            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Password Toggle Function
-    function toggleView(id) {
-        const p = document.getElementById(id);
-        p.type = p.type === 'password' ? 'text' : 'password';
-    }
-
     // --- Neural Network Particle Background Logic ---
     const canvas = document.getElementById('particle-canvas');
     const ctx = canvas.getContext('2d');
@@ -195,7 +157,6 @@
             p.x += p.vx;
             p.y += p.vy;
 
-            // Bounce off edges
             if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
             if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
             
@@ -203,7 +164,6 @@
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Connect nearby particles
             for(let j = index + 1; j < particles.length; j++) {
                 const p2 = particles[j];
                 const dist = Math.sqrt((p.x - p2.x)**2 + (p.y - p2.y)**2);
@@ -221,5 +181,10 @@
     window.addEventListener('resize', init);
     init();
     draw();
+
+    // Auto-focus the OTP input field on load
+    window.onload = function() {
+        document.getElementById("otp").focus();
+    };
 </script>
 {% endblock %}
